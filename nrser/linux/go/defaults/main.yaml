@@ -1,0 +1,8 @@
+go_version: 1.14.4 # As of 2020-06-07
+# I guess `unarchive` doesn't take checksums..?
+# go_checksum: aed845e4185a0b2a3c3d5e1d0a35491702c55889192bb9c30e67a3de6849c067
+go_tar_name: "go{{ go_version }}.linux-amd64.tar.gz"
+go_src_url: "https://dl.google.com/go/{{ go_tar_name }}"
+go_dest: /usr/local
+go_bin_path: "{{ go_dest }}/go/bin"
+go_profile_path: /etc/profile.d/go.sh
