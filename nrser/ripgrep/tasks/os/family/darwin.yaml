@@ -1,1 +1,5 @@
-- debug: msg=Darwining
+- name: Manage RipGrep package on macOS systems (Homebrew)
+  homebrew:
+    name: ripgrep
+    state: "{{ rg_state }}"
+    
