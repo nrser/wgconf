@@ -1,0 +1,13 @@
+
+
+# Linux
+# ----------------------------------------------------------------------------
+
+# I guess `unarchive` doesn't take checksums..?
+# go_linux_checksum: aed845e4185a0b2a3c3d5e1d0a35491702c55889192bb9c30e67a3de6849c067
+go_linux_tar_name: "go{{ go_version }}.linux-amd64.tar.gz"
+go_linux_src_url: "https://dl.google.com/go/{{ go_linux_tar_name }}"
+
+go_linux_dest: /usr/local
+go_linux_bin_path: "{{ go_linux_dest }}/go/bin"
+go_linux_profile_path: /etc/profile.d/go.sh
