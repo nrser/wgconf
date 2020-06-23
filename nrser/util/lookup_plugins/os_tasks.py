@@ -98,25 +98,7 @@ def split_version(version_str: str) -> Optional[List[str]]:
     if match is None:
         return None
     
-    return match.group(0).split('.')
-
-def find_path(dir: str, bare_rel_path: str) -> Optional[str]:
-    for ext in TASK_FILE_EXTS:
-        rel_path = bare_rel_path + ext
-        path = os.path.join(dir, rel_path)
-        
-        if os.path.exists(path):
-            if os.path.isfile(path):
-                display.vvvv(f"*** Found: {{dir}}/{rel_path} ***")
-                return path
-            
-            display.warning(
-                f"Path exists but is not a file: {{dir}}/{rel_path}"
-            )
-        
-    display.vvvv(f"Not found: {{dir}}/{bare_rel_path}.{{yaml,yml}}")
-    
-    return None    
+    return match.group(0).split('.')   
 
 def path_for_segments(segments):
     return os.path.join(
@@ -127,62 +109,90 @@ def path_for_segments(segments):
         )
     )
 
-def search(
-    dir: str,
-    distribution,
-    version,
-    release,
-    family,
-    system,
-    kernel,
-) -> Optional[str]:    
-    dist = ('distribution', distribution)
-    ver = ('version', version)
-    rel = ('release', release)
-    fam = ('family', family)
-    sys = ('system', system)
-    kern = ('kernel', kernel)
-    
-    order = (
-        (dist, ver),
-        (dist, rel),
-        (dist,),
-        (fam,),
-        (sys, kern),
-        (sys,),
-    )
-    
-    for segments in order:
-        bare_rel_paths = []
-        last_name, last_value = segments[-1]
-        
-        if (
-            last_name in ('version', 'kernel') and
-            (version_segments := split_version(last_value))
-        ):
-            base_segments = segments[0:-1]
-            
-            base_path = path_for_segments(base_segments)
-            
-            for end in range(len(version_segments) - 1, 0, -1):
-                bare_rel_paths.append(
-                    os.path.join(base_path, '.'.join(version_segments[0:end]))
-                )
-        else:
-            bare_rel_paths.append(path_for_segments(segments))
-        
-        for bare_rel_path in bare_rel_paths:
-            if path := find_path(dir, bare_rel_path):
-                return path
-    
-    if fallback_path := find_path(dir, FALLBACK_BASENAME):
-        return fallback_path
-    
-    display.vvvv(f"No search paths found.")
-    
-    return None
-
 class LookupModule(LookupBase):
+    
+    def _os_tasks_find_path(
+        self,
+        dir: str,
+        bare_rel_path: str,
+    ) -> Optional[str]:
+        self._os_tasks_searched_brps.append(bare_rel_path)
+    
+        for ext in TASK_FILE_EXTS:
+            rel_path = bare_rel_path + ext
+            path = os.path.join(dir, rel_path)
+            
+            if os.path.exists(path):
+                if os.path.isfile(path):
+                    display.vvvv(f"*** Found: {{dir}}/{rel_path} ***")
+                    return path
+                
+                display.warning(
+                    f"Path exists but is not a file: {{dir}}/{rel_path}"
+                )
+            
+        display.vvvv(f"Not found: {{dir}}/{bare_rel_path}.{{yaml,yml}}")
+        
+        return None 
+    
+    def _os_tasks_search(
+        self,
+        dir: str,
+        distribution,
+        version,
+        release,
+        family,
+        system,
+        kernel,
+    ) -> Optional[str]:
+        self._os_tasks_searched_brps = []
+    
+        dist = ('distribution', distribution)
+        ver = ('version', version)
+        rel = ('release', release)
+        fam = ('family', family)
+        sys = ('system', system)
+        kern = ('kernel', kernel)
+        
+        order = (
+            (dist, ver),
+            (dist, rel),
+            (dist,),
+            (fam,),
+            (sys, kern),
+            (sys,),
+        )
+        
+        for segments in order:
+            bare_rel_paths = []
+            last_name, last_value = segments[-1]
+            
+            if (
+                last_name in ('version', 'kernel') and
+                (version_segments := split_version(last_value))
+            ):
+                base_segments = segments[0:-1]
+                
+                base_path = path_for_segments(base_segments)
+                
+                for end in range(len(version_segments) - 1, 0, -1):
+                    bare_rel_paths.append(
+                        os.path.join(
+                            base_path,
+                            '.'.join(version_segments[0:end]),
+                        )
+                    )
+            else:
+                bare_rel_paths.append(path_for_segments(segments))
+            
+            for bare_rel_path in bare_rel_paths:
+                if path := self._os_tasks_find_path(dir, bare_rel_path):
+                    return path
+        
+        if fallback_path := self._os_tasks_find_path(dir, FALLBACK_BASENAME):
+            return fallback_path
+        
+        return None
 
     def run(self, terms, variables: Optional[Dict[str, Any]]=None, **kwargs):
         
@@ -211,17 +221,17 @@ class LookupModule(LookupBase):
         
         display.vvvv("Starting os_tasks lookup...")
         
-        display.vvvv(f"dir          = {dir}")
         display.vvvv(f"distribution = {distribution}")
         display.vvvv(f"version      = {version}")
         display.vvvv(f"release      = {release}")
         display.vvvv(f"family       = {family}")
         display.vvvv(f"system       = {system}")
         display.vvvv(f"kernel       = {kernel}")
+        display.vvvv(f"dir          = {dir}")
         
         display.vvvv("Starting path search...")
         
-        path = search(
+        path = self._os_tasks_search(
             dir=dir,
             distribution=distribution,
             version=version,
@@ -232,7 +242,31 @@ class LookupModule(LookupBase):
         )
         
         if path is None:
-            raise AnsibleError(f"No os tasks found in {dir}")
+            display.error(
+                "[[os_tasks Lookup Plugin " +
+                "(nrser/util/lookup_plugins/os_tasks.py)]]"
+            )
+            
+            display.error("FAILED: No os tasks found!")
+            
+            display.error("Search values (Ansible facts):")
+            
+            display.error(f"distribution = {distribution}")
+            display.error(f"version      = {version}")
+            display.error(f"release      = {release}")
+            display.error(f"family       = {family}")
+            display.error(f"system       = {system}")
+            display.error(f"kernel       = {kernel}")
+            
+            display.error(f"Search directory ({{dir}}:")
+            display.error(dir)
+            
+            display.error("Searched paths:")
+            
+            for bare_rel_path in self._os_tasks_searched_brps:
+                display.error(f"{{dir}}/{bare_rel_path}.{{yaml,yml}}")
+            
+            raise AnsibleError(f"No os tasks found, see error messages")
         
         result = [path]
         
