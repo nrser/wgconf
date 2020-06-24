@@ -61,6 +61,7 @@ import os
 from functools import reduce
 import re
 from typing import Optional, List, Dict, Any
+import pprint
 
 from ansible.errors import AnsibleError, AnsibleParserError
 from ansible.plugins.lookup import LookupBase
@@ -83,14 +84,16 @@ VERSION_RE = re.compile(r'^\d+(?:\.\d+){1,3}')
 '''
 FALLBACK_BASENAME = 'any'
 
+FACT_KEYS = (
+    'distribution',
+    'distribution_version',
+    'distribution_release',
+    'os_family',
+    'system',
+    'kernel',
+)
+
 display = Display()
-
-c = 1
-
-def here(v=None):
-    global c
-    display.vvvv(f"HERE {c}: {v}")
-    c += 1
 
 def split_version(version_str: str) -> Optional[List[str]]:
     match = VERSION_RE.search(version_str)
@@ -108,6 +111,30 @@ def path_for_segments(segments):
             in reduce(lambda a, b: a + b, segments)
         )
     )
+
+def get_vars(vars):
+    facts = vars.get('ansible_facts')
+    
+    if vars is None:
+        raise AnsibleError(
+            f"[os_tasks] `ansible_facts` variable is None - " +
+            "maybe `gather_facts` is false?"
+        )
+    
+    values = []
+    
+    for key in FACT_KEYS:
+        value = facts.get(key)
+        
+        if value is None:
+            raise AnsibleError(
+                f"[os_tasks] Required `ansible_facts` value {key} is `None`. " +
+                "Maybe `gather_facts` is false or subsetted?"
+            )
+        
+        values.append(value)
+    
+    return values
 
 class LookupModule(LookupBase):
     
@@ -212,12 +239,24 @@ class LookupModule(LookupBase):
         if not os.path.isdir(dir):
             raise AnsibleError(f"os tasks path {dir} is not a directory")
         
-        distribution = variables['ansible_distribution']
-        version = variables['ansible_distribution_version']
-        release = variables['ansible_distribution_release']
-        family = variables['ansible_os_family']
-        system = variables['ansible_system']
-        kernel = variables['ansible_kernel']
+        var_keys = (
+            # 'ansible_distribution',
+            # 'ansible_distribution_version',
+            # 'ansible_distribution_release',
+            # 'ansible_os_family',
+            # 'ansible_system',
+            # 'ansible_kernel',
+            'distribution',
+            'distribution_version',
+            'distribution_release',
+            'os_family',
+            'system',
+            'kernel',
+        )
+        
+        distribution, version, release, family, system, kernel = get_vars(
+            variables,
+        )
         
         display.vvvv("Starting os_tasks lookup...")
         
