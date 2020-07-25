@@ -27,6 +27,7 @@ DOCUMENTATION = """
             ```YAML
             ansible_distribution: Ubuntu
             ansible_distribution_version: 18.04
+            ansible_distribution_release: bionic
             ansible_os_family: Debian
             ansible_system: Linux
             ansible_kernel: 4.15.0-106-generic
@@ -47,6 +48,41 @@ DOCUMENTATION = """
             
             `.yml` extension is supported as well, but `.yaml` takes priority.
             
+        - >-
+            macOS looks a bit weirder, as the process was designed with Linux in
+            mind, but should still work fine due to there only being one major
+            distribution (at this time, at least).
+            
+            Assuming:
+
+            ```YAML
+            ansible_distribution: MacOSX
+            ansible_distribution_version: 10.14.6
+            ansible_distribution_release: 18.7.0
+            ansible_os_family: Darwin
+            ansible_system: Darwin
+            ansible_kernel: 18.7.0
+            ```
+
+            The path search order will be:
+
+            1.  $DIR/distribution/macosx/version/10.14.6.yaml
+            2.  $DIR/distribution/macosx/version/10.14.yaml
+            3.  $DIR/distribution/macosx/version/10.yaml
+            4.  $DIR/distribution/macosx/release/18.7.0.yaml
+            5.  $DIR/distribution/macosx/release/18.7.yaml
+            6.  $DIR/distribution/macosx/release/18.yaml
+            7.  $DIR/distribution/macosx.yaml
+            8.  $DIR/family/darwin.yaml
+            9.  $DIR/system/darwin/kernel/18.7.0.yaml
+            10. $DIR/system/darwin/kernel/18.7.yaml
+            11. $DIR/system/darwin/kernel/18.yaml
+            12. $DIR/system/darwin.yaml
+            13. $DIR/any.yaml
+
+            Again, `.yml` extension is supported as well, but `.yaml` takes
+            priority.
+
         - >-
             First file found wins. If none are found, an error is raised.
 
