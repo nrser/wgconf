@@ -15,6 +15,7 @@ from functools import reduce
 from os import path, PathLike
 from typing import *
 from collections.abc import Mapping, Iterable
+import urllib.parse
 
 def ini_enc_value(value):
     """Encode `value` for use in the `ini_file` module's `value:` parameter.
@@ -84,6 +85,22 @@ def join(frags) -> str:
     my_path: "a/b/c"
     '''
     return path.join(*frags)
+    
+def urljoin(frags) -> str:
+    '''It's just `urllib.parse.urljoin()`. Don't use `join()`, it gets weird if
+    any segments start with a `/`.
+    
+    >>> urljoin(('http://example.com', '/a/b/c'))
+    'http://example.com/a/b/c'
+    
+    Preferred usage style (Jinja2):
+    
+    ```yaml
+    my_path: "{{ ('http://example.com', '/a/b/c') | urljoin }}"
+    # ->
+    my_path: "http://example.com/a/b/c"
+    '''
+    return urllib.parse.urljoin(*frags)
 
 def dig(target, *key_path):
     '''Like Ruby - get the value at a key-path, or `None` if any keys in the
@@ -283,6 +300,7 @@ class FilterModule:
             ini_enc_value=ini_enc_value,
             f=f,
             join=join,
+            urljoin=urljoin,
             rel=rel,
             # dict_merge is included by Ansible as `combine`.
             # 
