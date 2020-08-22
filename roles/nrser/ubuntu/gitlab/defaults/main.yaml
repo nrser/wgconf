@@ -1,5 +1,3 @@
-apt_cache_valid_time: "{{ default_apt_cache_valid_time }}"
-
 # See https://packages.gitlab.com/install/repositories/gitlab/gitlab-ee/script.deb.sh
 # 
 # Var names kept the same with `gitlab_` prefix to make it easier...

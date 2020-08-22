@@ -3,6 +3,6 @@
 
 # Make sure we have a value for how often we update the apt cache, used when
 # installing packages.
-default_apt_cache_valid_time: 86400 # in seconds -> 1 day
+apt_cache_valid_time: 86400 # in seconds -> 1 day
 
-default_reboot_timeout: 600 # in seconds -> 10 mins
+reboot_timeout: 600 # in seconds -> 10 mins
