@@ -1,0 +1,22 @@
+# https://stackoverflow.com/a/45844178/1658272
+# https://github.com/nodesource/distributions/blob/master/README.md#debmanual
+
+- name: Install the gpg key for nodejs LTS
+  apt_key:
+    url: "https://deb.nodesource.com/gpgkey/nodesource.gpg.key"
+    state: present
+
+- name: Install the nodejs LTS repos
+  apt_repository:
+    repo: "deb https://deb.nodesource.com/node_{{ nodejs_version }}.x {{ ansible_distribution_release }} main"
+    state: present
+    update_cache: yes
+
+- name: Install the nodejs
+  apt:
+    name: nodejs
+    state: present
+
+- when: nodejs_yarn
+  include_tasks: yarn.yaml
+  
