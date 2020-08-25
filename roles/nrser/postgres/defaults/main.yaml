@@ -1,0 +1,39 @@
+pg_version: 12
+
+pg_client: true
+pg_contrib: true
+pg_frontend_dev: false
+pg_backend_dev: false
+
+pg_service_name: postgresql
+pg_service_enabled: true
+pg_service_state: started
+
+pg_local_admin_users: "{{ admin_users | default(None) }}"
+
+# 1.  distribution.ubuntu.version[18.04]
+# 2.  distribution.ubuntu.version[18]
+# 3.  distribution.ubuntu.release.bionic
+# 4.  distribution.ubuntu['']
+# 5.  family/debian.yaml
+# 6.  system/linux/kernel/4.15.0.yaml
+# 7.  system/linux/kernel/4.15.yaml
+# 8.  system/linux/kernel/4.yaml
+# 9.  system/linux.yaml
+# 10. any.yaml
+
+pg_os_conf_dir:
+  distribution:
+    ubuntu:
+      any: general value
+      version:
+        18.04: some value
+      release:
+        bionic: other value
+  family:
+    debian: "/etc/postgresql/{{ pg_version }}/main"
+    
+pg_conf_dir: "{{ pg_os_conf_dir[ansible_facts.os_family | lower] }}"
+
+pg_indent_conf_path: "{{ (pg_conf_dir, 'pg_ident.conf') | path }}"
+pg_hba_conf_path: "{{ (pg_conf_dir, 'pg_hba.conf') | path }}"

@@ -1,0 +1,10 @@
+- set_fact:
+    my_map:
+      family:
+        debian: deb
+        darwin: mac
+
+- set_fact:
+    result: "{{ lookup('os_map_resolve', my_map) }}"
+
+- debug: var=result

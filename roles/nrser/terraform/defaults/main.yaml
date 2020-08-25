@@ -5,6 +5,6 @@ tf_bin_dir: >-
     (ansible_env.USER == 'root')
     | ternary(
         '/usr/local/bin',
-        (ansible_env.HOME, 'bin') | join
+        (ansible_env.HOME, 'bin') | path
       )
   }}

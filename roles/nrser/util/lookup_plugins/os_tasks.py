@@ -1,6 +1,6 @@
 # python 3 headers, required if submitting to Ansible
-from __future__ import (absolute_import, division, print_function)
-__metaclass__ = type
+# from __future__ import (absolute_import, division, print_function)
+# __metaclass__ = type
 
 DOCUMENTATION = """
     lookup: platform_tasks
@@ -11,12 +11,12 @@ DOCUMENTATION = """
         - >-
             Iterates over combinations of
             
-            1.  `ansible_distribution`
-                1.  `ansible_distribution_version`
-                2.  `ansible_distribution_release`
-            2.  `ansible_os_family`
-            3.  `ansible_system`
-                1.  `ansible_kernel`
+            1.  `ansible_facts.distribution`
+                1.  `ansible_facts.distribution_version`
+                2.  `ansible_facts.distribution_release`
+            2.  `ansible_facts.os_family`
+            3.  `ansible_facts.system`
+                1.  `ansible_facts.kernel`
 
             "depth-first" from (1), indented to generally be most specific to 
             least.
@@ -25,12 +25,12 @@ DOCUMENTATION = """
             For a target directory `DIR`, and host with:
 
             ```YAML
-            ansible_distribution: Ubuntu
-            ansible_distribution_version: 18.04
-            ansible_distribution_release: bionic
-            ansible_os_family: Debian
-            ansible_system: Linux
-            ansible_kernel: 4.15.0-106-generic
+            ansible_facts.distribution: Ubuntu
+            ansible_facts.distribution_version: 18.04
+            ansible_facts.distribution_release: bionic
+            ansible_facts.os_family: Debian
+            ansible_facts.system: Linux
+            ansible_facts.kernel: 4.15.0-106-generic
             ```
             
             The path search order will be:
@@ -56,12 +56,12 @@ DOCUMENTATION = """
             Assuming:
 
             ```YAML
-            ansible_distribution: MacOSX
-            ansible_distribution_version: 10.14.6
-            ansible_distribution_release: 18.7.0
-            ansible_os_family: Darwin
-            ansible_system: Darwin
-            ansible_kernel: 18.7.0
+            ansible_facts.distribution: MacOSX
+            ansible_facts.distribution_version: 10.14.6
+            ansible_facts.distribution_release: 18.7.0
+            ansible_facts.os_family: Darwin
+            ansible_facts.system: Darwin
+            ansible_facts.kernel: 18.7.0
             ```
 
             The path search order will be:
@@ -70,15 +70,13 @@ DOCUMENTATION = """
             2.  $DIR/distribution/macosx/version/10.14.yaml
             3.  $DIR/distribution/macosx/version/10.yaml
             4.  $DIR/distribution/macosx/release/18.7.0.yaml
-            5.  $DIR/distribution/macosx/release/18.7.yaml
-            6.  $DIR/distribution/macosx/release/18.yaml
-            7.  $DIR/distribution/macosx.yaml
-            8.  $DIR/family/darwin.yaml
-            9.  $DIR/system/darwin/kernel/18.7.0.yaml
-            10. $DIR/system/darwin/kernel/18.7.yaml
-            11. $DIR/system/darwin/kernel/18.yaml
-            12. $DIR/system/darwin.yaml
-            13. $DIR/any.yaml
+            5.  $DIR/distribution/macosx.yaml
+            6.  $DIR/family/darwin.yaml
+            7.  $DIR/system/darwin/kernel/18.7.0.yaml
+            8.  $DIR/system/darwin/kernel/18.7.yaml
+            9.  $DIR/system/darwin/kernel/18.yaml
+            10. $DIR/system/darwin.yaml
+            11. $DIR/any.yaml
 
             Again, `.yml` extension is supported as well, but `.yaml` takes
             priority.
@@ -98,255 +96,83 @@ from functools import reduce
 import re
 from typing import Optional, List, Dict, Any
 import pprint
+import logging
 
 from ansible.errors import AnsibleError, AnsibleParserError
 from ansible.plugins.lookup import LookupBase
 from ansible.utils.display import Display
 
-'''Task file extensions we look for, in order.'''
-TASK_FILE_EXTS = ('.yaml', '.yml')
-
-'''Simple Regexp that matches 1 to 4 sequences of digits, `.`-separated, at the
-begining of a string. So it wont match just a leading sequence of digits, and it
-will match `'1.2.3.4.5.6'` as `'1.2.3.4'`, in order to limit things reasonably.
-
-Does not deal with pre-release versions or any of that other stuff no one can
-really seem to agree upon (check out how much SemVer parsers vary regarding
-corner cases across languages for a fun time).
-'''
-VERSION_RE = re.compile(r'^\d+(?:\.\d+){1,3}')
-
-'''File basename to use if no os-variable-specific paths exist.
-'''
-FALLBACK_BASENAME = 'any'
-
-FACT_KEYS = (
-    'distribution',
-    'distribution_version',
-    'distribution_release',
-    'os_family',
-    'system',
-    'kernel',
+import sys
+SRC_DIR = os.path.realpath(
+    os.path.join(
+        os.path.dirname(__file__),
+        '..', '..', '..', '..', 'lib'
+    )
 )
+sys.path.insert(0, SRC_DIR)
+
+from nansi.display_handler import DisplayHandler
+from nansi.os_resolve import os_file_resolve, OSResolveError
 
 display = Display()
 
-def split_version(version_str: str) -> Optional[List[str]]:
-    match = VERSION_RE.search(version_str)
-    
-    if match is None:
-        return None
-    
-    return match.group(0).split('.')   
+nansi_log = logging.getLogger('nansi')
+nansi_log.setLevel(logging.DEBUG)
+nansi_log.addHandler(DisplayHandler(display))
 
-def path_for_segments(segments):
-    return os.path.join(
-        *(
-            str(name).lower()
-            for name
-            in reduce(lambda a, b: a + b, segments)
-        )
-    )
+'''Task file extensions we look for, in order.'''
+TASK_FILE_EXTS = ('yaml', 'yml')
 
-def get_vars(vars):
-    facts = vars.get('ansible_facts')
-    
-    if vars is None:
-        raise AnsibleError(
-            f"[os_tasks] `ansible_facts` variable is None - " +
-            "maybe `gather_facts` is false?"
-        )
-    
-    values = []
-    
-    for key in FACT_KEYS:
-        value = facts.get(key)
-        
-        if value is None:
-            raise AnsibleError(
-                f"[os_tasks] Required `ansible_facts` value {key} is `None`. " +
-                "Maybe `gather_facts` is false or subsetted?"
-            )
-        
-        values.append(value)
-    
-    return values
+TITLE = f"[os_tasks] Lookup Plugin"
 
-class LookupModule(LookupBase):
-    
-    def _os_tasks_find_path(
-        self,
-        dir: str,
-        bare_rel_path: str,
-    ) -> Optional[str]:
-        self._os_tasks_searched_brps.append(bare_rel_path)
-    
-        for ext in TASK_FILE_EXTS:
-            rel_path = bare_rel_path + ext
-            path = os.path.join(dir, rel_path)
-            
-            if os.path.exists(path):
-                if os.path.isfile(path):
-                    display.vvvv(f"*** Found: {{dir}}/{rel_path} ***")
-                    return path
-                
-                display.warning(
-                    f"Path exists but is not a file: {{dir}}/{rel_path}"
-                )
-            
-        display.vvvv(f"Not found: {{dir}}/{bare_rel_path}.{{yaml,yml}}")
-        
-        return None 
-    
-    def _os_tasks_search(
-        self,
-        dir: str,
-        distribution,
-        version,
-        release,
-        family,
-        system,
-        kernel,
-    ) -> Optional[str]:
-        self._os_tasks_searched_brps = []
-    
-        dist = ('distribution', distribution)
-        ver = ('version', version)
-        rel = ('release', release)
-        fam = ('family', family)
-        sys = ('system', system)
-        kern = ('kernel', kernel)
-        
-        order = (
-            (dist, ver),
-            (dist, rel),
-            (dist,),
-            (fam,),
-            (sys, kern),
-            (sys,),
-        )
-        
-        for segments in order:
-            bare_rel_paths = []
-            last_name, last_value = segments[-1]
-            
-            if (
-                last_name in ('version', 'kernel') and
-                (version_segments := split_version(last_value))
-            ):
-                base_segments = segments[0:-1]
-                
-                base_path = path_for_segments(base_segments)
-                
-                for end in range(len(version_segments) - 1, 0, -1):
-                    bare_rel_paths.append(
-                        os.path.join(
-                            base_path,
-                            '.'.join(version_segments[0:end]),
-                        )
-                    )
-            else:
-                bare_rel_paths.append(path_for_segments(segments))
-            
-            for bare_rel_path in bare_rel_paths:
-                if path := self._os_tasks_find_path(dir, bare_rel_path):
-                    return path
-        
-        if fallback_path := self._os_tasks_find_path(dir, FALLBACK_BASENAME):
-            return fallback_path
-        
-        return None
+def display_error(error, ansible_facts, base_dir):
+    display.error(TITLE)
+    display.error(error.message)
+    display.error("Base directory:")
+    display.error(f"  {base_dir}")
+    display.error("Searched paths (relative to base directory):")
+    for path in error.tried:
+        display.error(f"  {path}")
+
+class LookupModule(LookupBase):    
 
     def run(self, terms, variables: Optional[Dict[str, Any]]=None, **kwargs):
+        display.vv(TITLE)
+        display.vv(f"  @see {__file__}")
         
         if variables is None:
-            raise AnsibleError("received `variables=None`")
+            raise AnsibleError("Received `variables=None`")
         
-        if len(terms) == 0:
-            raise AnsibleError("must provide os tasks directory as only term")
-        elif len(terms) > 1:
-            raise AnsibleError(f"Too many terms given (expects 1): {terms}")
-        
-        dir = terms[0]
-        
-        if not os.path.exists(dir):
-            raise AnsibleError(f"os tasks path {dir} does not exist")
-        
-        if not os.path.isdir(dir):
-            raise AnsibleError(f"os tasks path {dir} is not a directory")
-        
-        var_keys = (
-            # 'ansible_distribution',
-            # 'ansible_distribution_version',
-            # 'ansible_distribution_release',
-            # 'ansible_os_family',
-            # 'ansible_system',
-            # 'ansible_kernel',
-            'distribution',
-            'distribution_version',
-            'distribution_release',
-            'os_family',
-            'system',
-            'kernel',
-        )
-        
-        distribution, version, release, family, system, kernel = get_vars(
-            variables,
-        )
-        
-        display.vvvv("Starting os_tasks lookup...")
-        
-        display.vvvv(f"distribution = {distribution}")
-        display.vvvv(f"version      = {version}")
-        display.vvvv(f"release      = {release}")
-        display.vvvv(f"family       = {family}")
-        display.vvvv(f"system       = {system}")
-        display.vvvv(f"kernel       = {kernel}")
-        display.vvvv(f"dir          = {dir}")
-        
-        display.vvvv("Starting path search...")
-        
-        path = self._os_tasks_search(
-            dir=dir,
-            distribution=distribution,
-            version=version,
-            release=release,
-            family=family,
-            system=system,
-            kernel=kernel,
-        )
-        
-        if path is None:
-            display.error(
-                "[[os_tasks Lookup Plugin " +
-                "(nrser/util/lookup_plugins/os_tasks.py)]]"
+        if (ansible_facts := variables.get('ansible_facts')) is None:
+            raise AnsibleError(
+                "Required `ansible_facts` variable is missing, " +
+                "maybe `gather_facts` is false?"
             )
-            
-            display.error("FAILED: No os tasks found!")
-            
-            display.error("Search values (Ansible facts):")
-            
-            display.error(f"distribution = {distribution}")
-            display.error(f"version      = {version}")
-            display.error(f"release      = {release}")
-            display.error(f"family       = {family}")
-            display.error(f"system       = {system}")
-            display.error(f"kernel       = {kernel}")
-            
-            display.error(f"Search directory ({{dir}}:")
-            display.error(dir)
-            
-            display.error("Searched paths:")
-            
-            for bare_rel_path in self._os_tasks_searched_brps:
-                display.error(f"{{dir}}/{bare_rel_path}.{{yaml,yml}}")
-            
-            raise AnsibleError(f"No os tasks found, see error messages")
         
-        result = [path]
+        if len(terms) != 1:
+            raise AnsibleError(
+                "Must give exactly one arg (base directory for resolution), " +
+                f"given {terms}"
+            )
         
-        display.vvvv(f"Returning {result}")
+        base_dir = terms[0]
         
-        display.vvvv("Completed os_tasks lookup.")
+        if not os.path.exists(base_dir):
+            raise AnsibleError(f"Base directory does not exist: {base_dir}")
         
-        return result
+        if not os.path.isdir(base_dir):
+            raise AnsibleError(f"Base directory is not a directory: {base_dir}")
+        
+        try:
+            path = os_file_resolve(
+                variables.get('ansible_facts'),
+                base_dir,
+                ('yaml', 'yml')
+            )
+        except KeyError as error:
+            raise AnsibleError(*error.args)
+        except OSResolveError as error:
+            display_error(error, ansible_facts, base_dir)
+            raise AnsibleError(error.message)
+        
+        return [path]

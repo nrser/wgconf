@@ -17,6 +17,24 @@ from typing import *
 from collections.abc import Mapping, Iterable
 import urllib.parse
 
+import os
+import sys
+LIB_DIR = os.path.realpath(
+    os.path.join(
+        os.path.dirname(__file__),
+        '..', '..', '..', '..', 'lib'
+    )
+)
+sys.path.insert(0, LIB_DIR)
+
+from nansi.os_resolve import os_map_resolve
+
+def splat(f):
+    return lambda seq: f(*seq)
+
+def dictsplat(f):
+    return lambda dct: f(**dct)
+
 def ini_enc_value(value):
     """Encode `value` for use in the `ini_file` module's `value:` parameter.
     """
@@ -71,7 +89,7 @@ def rel(path: str, to: Optional[str] = None) -> str:
         pass
     return path
 
-def join(frags) -> str:
+def path_join(frags) -> str:
     '''It's just `os.path.join`, man.
     
     >>> join(('a', 'b', 'c'))
@@ -80,7 +98,7 @@ def join(frags) -> str:
     Preferred usage style (Jinja2):
     
     ```yaml
-    my_path: "{{ ('a', 'b', 'c') | join }}"
+    my_path: "{{ ('a', 'b', 'c') | path }}"
     # ->
     my_path: "a/b/c"
     '''
@@ -299,7 +317,7 @@ class FilterModule:
         return dict(
             ini_enc_value=ini_enc_value,
             f=f,
-            join=join,
+            path=path_join,
             urljoin=urljoin,
             rel=rel,
             # dict_merge is included by Ansible as `combine`.
@@ -311,6 +329,7 @@ class FilterModule:
             find_by=find_has_all,
             find_has_all=find_has_all,
             find_has_any=find_has_any,
+            os_map_resolve=os_map_resolve,
         )
 
 

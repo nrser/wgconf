@@ -1,1 +1,2 @@
-nodejs_yarn: false
+nodejs_major_version: 12
+nodejs_yarn: true

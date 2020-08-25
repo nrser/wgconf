@@ -15,4 +15,6 @@
   apt:
     name: yarn
     state: present
+    update_cache: true
+    cache_valid_time: "{{ apt_cache_valid_time }}"
 
