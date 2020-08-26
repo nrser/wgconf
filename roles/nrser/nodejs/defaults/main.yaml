@@ -1,2 +1,9 @@
-nodejs_major_version: 12
 nodejs_yarn: true
+
+# By default yank off the first number of the full version.
+# 
+# Debian family (Ubuntu) need this.
+#  
+nodejs_major_version: >-
+  {{ nodejs_versions.family.debian
+    | regex_replace('^(\d+)\..*$', '\1') }}

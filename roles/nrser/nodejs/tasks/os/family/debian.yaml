@@ -1,7 +1,7 @@
 # https://stackoverflow.com/a/45844178/1658272
 # https://github.com/nodesource/distributions/blob/master/README.md#debmanual
 
-- name: Install the gpg key for nodejs LTS
+- name: Install the gpg key for nodejs
   apt_key:
     url: "https://deb.nodesource.com/gpgkey/nodesource.gpg.key"
     state: present
@@ -16,11 +16,11 @@
 
 - name: Install nodejs
   apt:
-    name: nodejs
+    name: "nodejs={{ nodejs_version }}"
     state: present
     update_cache: true
     cache_valid_time: "{{ apt_cache_valid_time }}"
 
 - when: nodejs_yarn
-  include_tasks: ./ubuntu/yarn.yaml
+  include_tasks: ./debian/yarn.yaml
   
