@@ -75,7 +75,7 @@ class LookupModule(LookupBase):
         try:
             value = os_map_resolve(ansible_facts, mapping)
         except KeyError as error:
-            raise AnsibleError(error.message)
+            raise AnsibleError(*error.args)
         except OSResolveError as error:
             display_error(error, ansible_facts, mapping)
             raise AnsibleError(error.message)
