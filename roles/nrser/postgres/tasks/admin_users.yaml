@@ -72,7 +72,7 @@
     line: >-
       {{
         (
-          'admin'.ljust(4 * 2),
+          'admin'.ljust(4 * 4),
           item.name.ljust(4 * 6),
           'postgres',
         ) | join('')
