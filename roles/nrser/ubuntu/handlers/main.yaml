@@ -1,3 +1,23 @@
+- name: ufw_restart
+  service:
+    name: ufw
+    state: restarted
+    
+- name: ssh_restart
+  service:
+    name: ssh
+    state: restarted
+
+- name: sysctl_load
+  command:
+    argv: ["/sbin/sysctl", "-p"]
+
+# Old names...
+# ============================================================================
+# 
+# Should be changed!
+# 
+
 - name: restart_ufw
   service:
     name: ufw
