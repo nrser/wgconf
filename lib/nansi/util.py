@@ -24,7 +24,7 @@ def is_no(x: Any) -> bool:
     >>> any(is_no(x) for x in ('', [], {}, 0, 0.0))
     False
     '''
-    return x is None or x is False;
+    return x is None or x is False
 
 def find(itr: Iterator[T], predicate: Callable[[T], No]) -> Optional[T]:
     '''
