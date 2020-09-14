@@ -1,0 +1,5 @@
+- include_tasks: >-
+    {{ (role_path, 'tasks', 'state', nginx_site_state + '.yaml') | path }}
+    
+# Force the restart to happen (if needed)
+- meta: flush_handlers

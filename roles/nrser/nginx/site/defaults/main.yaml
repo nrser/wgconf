@@ -1,0 +1,24 @@
+nginx_site_available_dir: "{{ (nginx_cfg_dir, 'sites-available') | path }}"
+nginx_site_enabled_dir: "{{ (nginx_cfg_dir, 'sites-enabled') | path }}"
+
+nginx_site_state: enabled # | available | absent
+
+nginx_site_http: yes # | no | redirect
+nginx_site_https: yes # | no
+
+nginx_site_http_filename: "{{ nginx_site_name }}.http.conf"
+nginx_site_https_filename: "{{ nginx_site_name }}.https.conf"
+
+nginx_site_lets_encrypt: no
+
+nginx_site_proxy: no # Needs to be `yes` for the following to matter:
+nginx_site_proxy_location: "/"
+nginx_site_proxy_scheme: http
+nginx_site_proxy_host: localhost
+# nginx_site_proxy_port: REQUIRED UNLESS OVERRIDE nginx_site_proxy_dest
+nginx_site_proxy_dest: >-
+  {{  nginx_site_proxy_scheme + '://' +
+      nginx_site_proxy_host + ':' +
+      (nginx_site_proxy_port | string) }}
+
+nginx_site_proxy_websockets: "{{ nginx_proxy_websockets }}"

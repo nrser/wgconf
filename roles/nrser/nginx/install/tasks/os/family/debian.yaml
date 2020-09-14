@@ -1,0 +1,12 @@
+- name: Install `nginx` with `apt`
+  apt:
+    name: nginx
+    update_cache: true
+    cache_valid_time: "{{ apt_cache_valid_time | default(86400) }}"
+
+- when: nginx_firewall_allow in _nginx_ufw_names
+  ufw:
+    # https://gist.github.com/AJMaxwell/3b94939a61559b47c2c4dc0ff265d172
+    name: "{{ _nginx_ufw_names[nginx_firewall_allow] }}"
+    rule: allow
+    

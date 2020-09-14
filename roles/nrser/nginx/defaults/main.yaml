@@ -1,0 +1,26 @@
+# Directories
+nginx_cfg_dir: /etc/nginx
+nginx_run_dir: /run
+nginx_log_dir: /var/log/nginx
+
+# Config
+nginx_user: www-data
+nginx_conf_template: nginx.conf
+nginx_conf_filename: nginx.conf
+nginx_conf_dest: "{{ (nginx_cfg_dir, nginx_conf_filename) | path }}"
+nginx_exe: /usr/sbin/nginx
+nginx_conf_validate: "{{ nginx_exe }} -t -c %s"
+nginx_proxy_websockets: yes
+
+# Service
+nginx_enabled: yes
+nginx_state: started
+
+# Firewall
+nginx_firewall_allow: all
+_nginx_ufw_names:
+  http: Nginx HTTP
+  https: Nginx HTTPS
+  all: Nginx Full
+  full: Nginx Full
+

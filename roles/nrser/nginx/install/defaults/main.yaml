@@ -1,0 +1,4 @@
+# See https://docs.ansible.com/ansible/latest/modules/openssl_dhparam_module.html
+nginx_gen_dhparam: yes
+nginx_dhparam_path: /etc/ssl/certs/dhparam.pem
+nginx_dhparam_size: 4096

@@ -1,0 +1,29 @@
+- include_tasks: "{{ lookup('os_tasks', (role_path, 'tasks/os') | path) }}"
+
+- when: nginx_gen_dhparam
+  name: >-
+    Generate dhparams at {{ nginx_dhparam_path | f }}
+  openssl_dhparam:
+    path: "{{ nginx_dhparam_path }}"
+    size: "{{ nginx_dhparam_size }}"
+    backup: true
+
+- when: nginx_conf_template is not none
+  name: >-
+    Template {{ nginx_conf_template | f }} -> {{ nginx_conf_dest | f }}
+  template:
+    src: "{{ nginx_conf_template }}"
+    dest: "{{ nginx_conf_dest }}"
+    backup: true
+    validate: "{{ nginx_conf_validate }}"
+  notify:
+    - nginx_restart
+
+- name: Manage nginx service
+  service:
+    name: nginx
+    enabled: "{{ nginx_enabled }}"
+    state: "{{ nginx_state }}"
+
+# Force the restart to happen (if needed)
+- meta: flush_handlers
