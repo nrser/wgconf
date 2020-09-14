@@ -1,0 +1,90 @@
+---
+# https://docs.ansible.com/ansible/latest/modules/user_module.html
+# https://docs.ansible.com/ansible/latest/modules/authorized_key_module.html
+# 
+
+- name: >-
+    Create admin group {{ users_admin_group | f }}
+  group:
+    name: "{{ users_admin_group }}"
+    state: present
+
+- name: >-
+    Create humans group {{ users_humans_group | f }}
+  group:
+    name: "{{ users_humans_group }}"
+    state: present
+
+- name: >-
+    Allow {{ users_admin_group | f }} group to have password-less sudo
+  lineinfile:
+    dest: /etc/sudoers
+    state: present
+    regexp: '^%{{ users_admin_group }}'
+    line: '%{{ users_admin_group }} ALL=(ALL) NOPASSWD: ALL'
+  
+- with_items: "{{ humans }}"
+  name: Create human users
+  user:
+    name: "{{ item.name }}"
+    state: present
+    create_home: true
+    shell: /bin/bash
+
+- with_items: "{{ humans }}"
+  name: >-
+    Add all human users to {{ users_humans_group | f }} group
+  user:
+    name: "{{ item.name }}"
+    groups: "{{ users_humans_group }}"
+    append: true
+
+- with_items: "{{ humans }}"
+  when: item.admin | default( false )
+  name: >-
+    Add admin users to {{ users_admin_group | f }} group
+  user:
+    name: "{{ item.name }}"
+    groups: "{{ users_admin_group }}"
+    append: true
+  # command: "usermod -aG admin {{ item.name }}"
+  
+- with_items: "{{ humans }}"
+  name: Set the user ssh keys from their ones on GitHub
+  authorized_key:
+    user: "{{ item.name }}"
+    key: "https://github.com/{{ item.github }}.keys"
+    exclusive: true
+
+# it's much more secure to use ssh keys
+- name: Disallow SSH password authentication
+  lineinfile:
+    dest: /etc/ssh/sshd_config
+    regexp: "^\\#?PasswordAuthentication"
+    line: PasswordAuthentication no
+    state: present
+  notify: ssh_restart
+
+# turning off root ssh access is a security best practice
+- name: Disallow root SSH access
+  lineinfile:
+    dest: /etc/ssh/sshd_config
+    regexp: "^PermitRootLogin"
+    line: PermitRootLogin no
+    state: present
+  notify: ssh_restart
+
+- name: >-
+    ONLY allow login for humans group {{ users_humans_group | f }}
+  lineinfile:
+    dest: /etc/ssh/sshd_config
+    regexp: "^\\#?AllowGroups"
+    line: "AllowGroups {{ users_humans_group }}"
+    state: present
+  notify: ssh_restart
+
+- with_items: "{{ humans }}"
+  loop_control:
+    loop_var: user
+  when: "'git' in user"
+  include_tasks: "{{ role_path }}/tasks/_git_config.yaml"

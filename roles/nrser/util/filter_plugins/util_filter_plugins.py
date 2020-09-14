@@ -28,6 +28,7 @@ LIB_DIR = os.path.realpath(
 sys.path.insert(0, LIB_DIR)
 
 from nansi.os_resolve import os_map_resolve
+from nansi.git_util import repo_pathspace
 
 def splat(f):
     return lambda seq: f(*seq)
@@ -330,6 +331,7 @@ class FilterModule:
             find_has_all=find_has_all,
             find_has_any=find_has_any,
             os_map_resolve=os_map_resolve,
+            repo_pathspace=repo_pathspace,
         )
 
 

@@ -1,0 +1,9 @@
+- with_dict: "{{ user.git }}"
+  name: >-
+    Configure git for {{ user.name }}
+  become: true
+  become_user: "{{ user.name }}"
+  git_config:
+    scope: global
+    name: "{{ item.key }}"
+    value: "{{ item.value }}"
