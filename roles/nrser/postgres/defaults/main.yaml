@@ -9,7 +9,7 @@ pg_service_name: postgresql
 pg_service_enabled: true
 pg_service_state: started
 
-pg_local_admin_users: "{{ admin_users | default(None) }}"
+pg_local_admin_users: null
 
 pg_os_conf_dir:
   family:
