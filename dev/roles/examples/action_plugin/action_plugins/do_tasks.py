@@ -22,11 +22,13 @@ class ActionModule(ActionBase):
         result = super(ActionModule, self).run(tmp, task_vars)
         
         # dump('self._task', self._task)
+        # dump('self._task.args', self._task.args)
+        dump('task_vars', task_vars)
         
         # module_name, module_args = tuple(self._task.args['task'].items())[0]
         tasks = self._task.args['tasks']
         
-        dump('tasks', tasks)
+        # dump('tasks', tasks)
         
         del tmp  # tmp no longer has any effect
         
@@ -55,6 +57,6 @@ class ActionModule(ActionBase):
                     result['changed'] = True
                 # result['results'].append(action_result)
         
-        dump('result', result)
+        # dump('result', result)
         
         return result
