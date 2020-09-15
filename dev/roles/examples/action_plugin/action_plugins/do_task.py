@@ -12,14 +12,16 @@ D = Display()
 PP = pprint.PrettyPrinter(indent=4)
 
 def dump(name, v):
-    D.vvvv(f"*** {name} ***")
-    D.vvvv(f"value: {PP.pformat(v)}")
-    D.vvvv(f"type: {type(v)}")
-    D.vvvv(f"******")
+    D.v(f"# *** {name} ***")
+    D.v(f"# type: {type(v)}")
+    D.v(f"value = {PP.pformat(v)}")
+    D.v(f"# *** /{name} ***")
 
 class ActionModule(ActionBase):
     def run(self, tmp=None, task_vars=None):
-        super(ActionModule, self).run(tmp, task_vars)
+        result = super(ActionModule, self).run(tmp, task_vars)
+        
+        dump('self._task', self._task)
         
         # module_name, module_args = tuple(self._task.args['task'].items())[0]
         task_name = self._task.args['name']
@@ -31,7 +33,7 @@ class ActionModule(ActionBase):
         self._task.action = task_name
         self._task.args = task_args
 
-        command_action = self._shared_loader_obj.action_loader.get(
+        action = self._shared_loader_obj.action_loader.get(
             # 'ansible.legacy.command',
             self._task.action,
             task=self._task,
@@ -42,6 +44,10 @@ class ActionModule(ActionBase):
             shared_loader_obj=self._shared_loader_obj
         )
         
-        result = command_action.run(task_vars=task_vars)
-
+        dump('action', action)
+        
+        result.update(action.run(task_vars=task_vars))
+        
+        dump('result', result)
+        
         return result
