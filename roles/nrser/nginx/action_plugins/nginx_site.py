@@ -48,6 +48,14 @@ def from_vars(name, default=None):
 def from_call(name):
     return lambda self: getattr(self, name)()
 
+def from_attr(name):
+    return lambda self: getattr(self, name)
+
+def role_path(rel_path):
+    return os.path.realpath(
+        os.path.join(os.path.dirname(__file__), '..', rel_path)
+    )
+
 class NginxSite(Proper):
     STATE_TYPE = Literal['enabled', 'available', 'disabled', 'absent']
     
@@ -57,12 +65,15 @@ class NginxSite(Proper):
     
     name                = prop( str )
     state               = prop( STATE_TYPE, 'enabled' )
-    http                = prop( Union[bool, STATE_TYPE], True )
+    server_name         = prop( str, from_attr('name') )
+    http                = prop( Union[bool, STATE_TYPE, Literal['redirect']],
+                                True )
     https               = prop( Union[bool, STATE_TYPE], True )
-    http_template       = prop( str, 'http.conf' )
-    https_template      = prop( str, 'https.conf' )
+    http_template       = prop( str, role_path('templates/http.conf') )
+    https_template      = prop( str, role_path('templates/https.conf') )
     lets_encrypt        = prop( bool, False )
     proxy               = prop( bool, False )
+    proxy_location      = prop( str, '/' )
     proxy_path          = prop( str, '/' )
     proxy_scheme        = prop( str, 'http' )
     proxy_host          = prop( str, 'localhost' )
@@ -100,7 +111,7 @@ class NginxSite(Proper):
             enabled = False
         else:
             available = (state != 'absent')
-            enabled = (state == 'enabled')
+            enabled = (state == 'enabled' or state == 'redirect')
         filename = f"{self.name}.{scheme}.conf"
         conf_path = os.path.join(self.sites_available_dir, filename)
         link_path = os.path.join(self.sites_enabled_dir, filename)
@@ -132,28 +143,32 @@ class ActionModule(NansiActionBase):
                 
         for scheme in site.schemes():
             if scheme.available:
-                self.run_action(
+                self.compose_task(
                     'template',
+                    _task_vars = {
+                        **self._task_vars,
+                        'site': site,
+                    },
                     src     = scheme.conf_template,
                     dest    = scheme.conf_path,
                     backup  = True,
                 )
                 if scheme.enabled:
-                    self.run_action(
+                    self.compose_task(
                         'file',
                         src     = scheme.conf_path,
                         dest    = scheme.link_path,
                         state   = 'link',
                     )
                 else:
-                    self.run_action(
+                    self.compose_task(
                         'file',
                         path    = scheme.link_path,
                         state   = 'absent',
                     )
             else:
                 for path in (scheme.link_path, scheme.conf_path):
-                    self.run_action(
+                    self.compose_task(
                         'file',
                         path    = path,
                         state   = 'absent',

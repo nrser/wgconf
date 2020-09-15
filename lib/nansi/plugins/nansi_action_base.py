@@ -28,7 +28,9 @@ class NansiActionBase(ActionBase):
         f(f"# *** /{name} ***")
     
     def run(self, tmp=None, task_vars=None):
-        result = super(NansiActionBase, self).run(tmp, task_vars)
+        # result = super(NansiActionBase, self).run(tmp, task_vars)
+        result = super().run(tmp, task_vars)
+        result['changed'] = False
         
         del tmp # Some Ansible legacy shit I guess
         
@@ -68,7 +70,7 @@ class NansiActionBase(ActionBase):
         
         return self._result
     
-    def run_action(self, name, _task_vars=None, **args):
+    def compose_task(self, name, _task_vars=None, **args):
         if _task_vars is None:
             _task_vars = self._task_vars
         task = self._task.copy()
@@ -83,7 +85,16 @@ class NansiActionBase(ActionBase):
             templar=self._templar,
             shared_loader_obj=self._shared_loader_obj
         )
-        result = action.run(task_vars=_task_vars)
+        
+        if action is None:
+            # raise RuntimeError(f"Action {repr(name)} not found")
+            result = self._execute_module(
+                name,
+                module_args = args,
+                task_vars = _task_vars,
+            )
+        else:
+            result = action.run(task_vars=_task_vars)
         
         if result.get('failed', False):
             self.dump(f"{name} FAILED RESULT", result)
