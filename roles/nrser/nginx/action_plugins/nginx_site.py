@@ -27,16 +27,6 @@ nansi_log = logging.getLogger('nansi')
 nansi_log.setLevel(logging.DEBUG)
 nansi_log.addHandler(DisplayHandler(D))
 
-# Invocation looks like:
-# 
-#   tasks:
-#     - nginx_site:
-#         name: mica.dev.outcut
-#         https: no
-#         proxy:
-#           port: 4001
-# 
-
 def from_var(name, default=None):
     return lambda self: self.vars.get(name, default)
 
