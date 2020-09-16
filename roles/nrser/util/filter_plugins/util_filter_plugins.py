@@ -17,16 +17,6 @@ from typing import *
 from collections.abc import Mapping, Iterable
 import urllib.parse
 
-import os
-import sys
-LIB_DIR = os.path.realpath(
-    os.path.join(
-        os.path.dirname(__file__),
-        '..', '..', '..', '..', 'lib'
-    )
-)
-sys.path.insert(0, LIB_DIR)
-
 from nansi.os_resolve import os_map_resolve
 from nansi.git_util import repo_pathspace
 

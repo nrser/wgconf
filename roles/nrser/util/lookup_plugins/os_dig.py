@@ -8,16 +8,6 @@ from ansible.errors import AnsibleError, AnsibleParserError
 from ansible.plugins.lookup import LookupBase
 from ansible.utils.display import Display
 
-import os
-import sys
-LIB_DIR = os.path.realpath(
-    os.path.join(
-        os.path.dirname(__file__),
-        '..', '..', '..', '..', 'lib'
-    )
-)
-sys.path.insert(0, LIB_DIR)
-
 from nansi.display_handler import DisplayHandler
 
 display = Display()

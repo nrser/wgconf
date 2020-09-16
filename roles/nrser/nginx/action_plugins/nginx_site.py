@@ -1,20 +1,10 @@
 from __future__ import annotations
-import os
+from os.path import join, realpath, dirname
 from collections import namedtuple
 from typing import *
 import logging
 
 from ansible.utils.display import Display
-
-import os
-import sys
-LIB_DIR = os.path.realpath(
-    os.path.join(
-        os.path.dirname(__file__),
-        '..', '..', '..', '..', 'lib'
-    )
-)
-sys.path.insert(0, LIB_DIR)
 
 from nansi.plugins.compose_action import ComposeAction
 from nansi.proper import Proper, prop
@@ -37,9 +27,7 @@ def from_attr(name):
     return lambda self: getattr(self, name)
 
 def role_path(rel_path):
-    return os.path.realpath(
-        os.path.join(os.path.dirname(__file__), '..', rel_path)
-    )
+    return realpath(join(dirname(__file__), '..', rel_path))
 
 class NginxSite(Proper):
     # 'available' and 'disabled' are the same thing -- 'available' is the Nginx
@@ -106,11 +94,11 @@ class NginxSite(Proper):
 
     @property
     def sites_available_dir(self):
-        return os.path.join( self.config_dir, 'sites-available' )
+        return join( self.config_dir, 'sites-available' )
     
     @property
     def sites_enabled_dir(self):
-        return os.path.join( self.config_dir, 'sites-enabled' )
+        return join( self.config_dir, 'sites-enabled' )
     
     def _default_server_name(self) -> str:
         return f"{self.name}.{self.vars['inventory_hostname']}"
@@ -156,8 +144,8 @@ class NginxSite(Proper):
             available       = available,
             enabled         = enabled,
             conf_template   = getattr(self, f"{scheme}_template"),
-            conf_path       = os.path.join(self.sites_available_dir, filename),
-            link_path       = os.path.join(self.sites_enabled_dir, filename),
+            conf_path       = join(self.sites_available_dir, filename),
+            link_path       = join(self.sites_enabled_dir, filename),
         )
     
     @property
