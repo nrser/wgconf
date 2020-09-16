@@ -16,7 +16,7 @@ LIB_DIR = os.path.realpath(
 )
 sys.path.insert(0, LIB_DIR)
 
-from nansi.plugins.nansi_action_base import NansiActionBase
+from nansi.plugins.compose_action import ComposeAction
 from nansi.proper import Proper, prop
 
 from nansi.display_handler import DisplayHandler
@@ -37,15 +37,10 @@ nansi_log.addHandler(DisplayHandler(D))
 #           port: 4001
 # 
 
-NginxSiteScheme = namedtuple(
-    'NginxSiteScheme',
-    'scheme available enabled conf_template conf_path link_path'
-)
-
-def from_vars(name, default=None):
+def from_var(name, default=None):
     return lambda self: self.vars.get(name, default)
 
-def from_call(name):
+def from_method(name):
     return lambda self: getattr(self, name)()
 
 def from_attr(name):
@@ -57,32 +52,60 @@ def role_path(rel_path):
     )
 
 class NginxSite(Proper):
-    STATE_TYPE = Literal['enabled', 'available', 'disabled', 'absent']
+    # 'available' and 'disabled' are the same thing -- 'available' is the Nginx
+    # term, as it ends up in the 'sites-available' directory, and 'disabled'
+    # makes more sense next to 'enabled'.
+    STATE_TYPE = Literal[ 'enabled', 'available', 'disabled', 'absent' ]
     
-    config_dir          = prop( str, '/etc/nginx' )
-    run_dir             = prop( str, '/run' )
-    log_dir             = prop( str, '/var/log/nginx' )
+    Config = namedtuple('Config', (
+        'scheme',
+        'available',
+        'enabled',
+        'conf_template',
+        'conf_path',
+        'link_path',
+    ))
     
-    name                = prop( str )
+    # Props
+    # ========================================================================
+    
+    ### Required ###
+    
+    name = prop( str )
+    
+    ### Optional ###
+    
+    # Direcotry locations, pulled from global `nginx_` vars, with fallbacks
+    config_dir  = prop( str, from_var('nginx_config_dir', '/etc/nginx') )
+    run_dir     = prop( str, from_var('nginx_run_dir', '/run') )
+    log_dir     = prop( str, from_var('nginx_log_dir', '/var/log/nginx') )
+    
     state               = prop( STATE_TYPE, 'enabled' )
-    server_name         = prop( str, from_attr('name') )
-    http                = prop( Union[bool, STATE_TYPE, Literal['redirect']],
+    server_name         = prop( str, from_method('_default_server_name') )
+    
+    http                = prop( Union[ bool, STATE_TYPE, Literal['redirect'] ],
                                 True )
-    https               = prop( Union[bool, STATE_TYPE], True )
+    https               = prop( Union[ bool, STATE_TYPE ],
+                                True )
+    
     http_template       = prop( str, role_path('templates/http.conf') )
     https_template      = prop( str, role_path('templates/https.conf') )
-    lets_encrypt        = prop( bool, False )
+    
+    lets_encrypt        = prop( bool, from_var('nginx_lets_encrypt', False) )
+    
     proxy               = prop( bool, False )
+    
     proxy_location      = prop( str, '/' )
     proxy_path          = prop( str, '/' )
     proxy_scheme        = prop( str, 'http' )
     proxy_host          = prop( str, 'localhost' )
-    proxy_port          = prop( Union[None, int, str],
-                                from_call('default_proxy_port') )
+    proxy_port          = prop( Union[ None, int, str ],
+                                from_method('_default_proxy_port') )
+    
     proxy_dest          = prop( str,
-                                from_call('default_proxy_dest') )
+                                from_method('_default_proxy_dest') )
     proxy_websockets    = prop( bool,
-                                from_vars('nginx_websockets', False) )
+                                from_var('nginx_websockets', False) )
     
     def __init__(self, args, vars):
         self.vars = vars
@@ -90,41 +113,7 @@ class NginxSite(Proper):
             **vars.get('nginx_site_defaults', {}),
             **args
         })
-    
-    def default_proxy_port(self) -> Optional[int]:
-        return (8888 if self.proxy_host == 'localhost' else None)
-    
-    def default_proxy_dest(self) -> str:
-        netloc = (
-            self.proxy_host if self.proxy_port is None
-            else f"{self.proxy_host}:{self.proxy_port}"
-        )
-        return f"{self.proxy_scheme}://{netloc}{self.proxy_path}"
-    
-    def _scheme(self, scheme):
-        state = getattr(self, scheme)
-        if state is True:
-            available = (self.state != 'absent')
-            enabled = (self.state == 'enabled')
-        elif state is False:
-            available = False
-            enabled = False
-        else:
-            available = (state != 'absent')
-            enabled = (state == 'enabled' or state == 'redirect')
-        filename = f"{self.name}.{scheme}.conf"
-        conf_path = os.path.join(self.sites_available_dir, filename)
-        link_path = os.path.join(self.sites_enabled_dir, filename)
-        conf_template = getattr(self, f"{scheme}_template")
-        return NginxSiteScheme(
-            scheme=scheme, available=available, enabled=enabled,
-            conf_template=conf_template, conf_path=conf_path,
-            link_path=link_path
-        )
-        
-    def schemes(self):
-        return (self._scheme(scheme) for scheme in ('http', 'https'))
-    
+
     @property
     def sites_available_dir(self):
         return os.path.join( self.config_dir, 'sites-available' )
@@ -132,49 +121,89 @@ class NginxSite(Proper):
     @property
     def sites_enabled_dir(self):
         return os.path.join( self.config_dir, 'sites-enabled' )
-
-class ActionModule(NansiActionBase):
-    def run_actions(self):
-        site = NginxSite(self._task.args, self._task_vars)
+    
+    def _default_server_name(self) -> str:
+        return f"{self.name}.{self.vars['inventory_hostname']}"
+    
+    def _default_proxy_port(self) -> Optional[int]:
+        return (8888 if self.proxy_host == 'localhost' else None)
+    
+    def _default_proxy_dest(self) -> str:
+        netloc = (
+            self.proxy_host if self.proxy_port is None
+            else f"{self.proxy_host}:{self.proxy_port}"
+        )
+        return f"{self.proxy_scheme}://{netloc}{self.proxy_path}"
+    
+    def _config_for(
+        self,
+        scheme: Literal['http', 'https']
+    ) -> NginxSite.Config:
+        '''`NginxSite.Config` instances for each of the HTTP and HTTPS schemes
+        supported -- packages up state and path information for convenient use.
         
-        self.dump('site', site)
-        for name in NginxSite.props().keys():
-            self.dump(f"site.{name}", getattr(site, name))
+        Access via `self.configs`.
+        '''
+        # Get the state property for this `scheme` -- value of `self.http` or
+        # `self.https`.
+        scheme_state = getattr(self, scheme)
+        
+        # Config is available when the site is not absent (prevents *any*
+        # configs from being present) and the scheme wasn't set to be 'absent'
+        # or `False`.
+        available   = ( self.state != 'absent' and
+                        scheme_state not in ('absent', False) )
+        
+        # Config is enabled when the site is enabled (necessary for *any*
+        # configs to be enabled) and the scheme is 'enabled', 'redirect'
+        # (HTTP-only, redirecting to HTTPS) or `True` (default).
+        enabled     = ( self.state == 'enabled' and
+                        scheme_state in ('enabled', 'redirect', True) )
+        
+        filename = f"{self.name}.{scheme}.conf"
+        return NginxSite.Config(
+            scheme          = scheme,
+            available       = available,
+            enabled         = enabled,
+            conf_template   = getattr(self, f"{scheme}_template"),
+            conf_path       = os.path.join(self.sites_available_dir, filename),
+            link_path       = os.path.join(self.sites_enabled_dir, filename),
+        )
+    
+    @property
+    def configs(self):
+        return (self._config_for(scheme) for scheme in ('http', 'https'))
+
+class ActionModule(ComposeAction):    
+    def compose(self):
+        site = NginxSite(self._task.args, self._task_vars)
                 
-        for scheme in site.schemes():
-            if scheme.available:
-                self.compose_task(
+        for config in site.configs:            
+            if config.available:
+                self.run_task(
                     'template',
-                    _task_vars = {
-                        **self._task_vars,
-                        'site': site,
-                    },
-                    src     = scheme.conf_template,
-                    dest    = scheme.conf_path,
+                    { **self._task_vars, 'site': site },
+                    src     = config.conf_template,
+                    dest    = config.conf_path,
                     backup  = True,
                 )
-                if scheme.enabled:
-                    self.compose_task(
+                if config.enabled:
+                    self.run_task(
                         'file',
-                        src     = scheme.conf_path,
-                        dest    = scheme.link_path,
+                        src     = config.conf_path,
+                        dest    = config.link_path,
                         state   = 'link',
                     )
                 else:
-                    self.compose_task(
+                    self.run_task(
                         'file',
-                        path    = scheme.link_path,
+                        path    = config.link_path,
                         state   = 'absent',
                     )
             else:
-                for path in (scheme.link_path, scheme.conf_path):
-                    self.compose_task(
+                for path in (config.link_path, config.conf_path):
+                    self.run_task(
                         'file',
                         path    = path,
                         state   = 'absent',
                     )
-
-        
-        
-        
-

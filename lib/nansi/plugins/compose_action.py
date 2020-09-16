@@ -1,6 +1,7 @@
 from __future__ import annotations
 import pprint
 import logging
+from abc import abstractmethod
 
 from ansible.plugins.action import ActionBase
 from ansible.utils.display import Display
@@ -17,7 +18,7 @@ class ComposedActionFailedError(RuntimeError): #(AnsibleError):
         self.action = action
         self.result = result
 
-class NansiActionBase(ActionBase):
+class ComposeAction(ActionBase):
     
     def dump(self, name, value, method='v'):
         f = getattr(D, method)
@@ -26,6 +27,15 @@ class NansiActionBase(ActionBase):
         f(f"# type: {type(value)}")
         f(f"value = {PP.pformat(value)}")
         f(f"# *** /{name} ***")
+    
+    @abstractmethod
+    def compose(self):
+        '''Responsible for executing composed sub-tasks by calling
+        `#run_task()`, called automatically inside `#run()`.
+        
+        Abstract -- must be implemented by realizing classes.
+        '''
+        pass
     
     def run(self, tmp=None, task_vars=None):
         # result = super(NansiActionBase, self).run(tmp, task_vars)
@@ -48,7 +58,7 @@ class NansiActionBase(ActionBase):
         self._result = result
         
         try:
-            self.run_actions()
+            self.compose()
         except AnsibleError as error:
             raise error
         except Exception as error:
@@ -70,7 +80,7 @@ class NansiActionBase(ActionBase):
         
         return self._result
     
-    def compose_task(self, name, _task_vars=None, **args):
+    def run_task(self, name, _task_vars=None, **args):
         if _task_vars is None:
             _task_vars = self._task_vars
         task = self._task.copy()
