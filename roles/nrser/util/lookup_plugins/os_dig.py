@@ -18,7 +18,7 @@ nansi_log.addHandler(DisplayHandler(display))
 
 from nansi.os_resolve import os_map_resolve, OSResolveError
 
-NAME = 'os_resolve'
+NAME = 'os_dig'
 TITLE = f"[[{NAME} Lookup Plugin]]"
 SEE = f"  @see {__file__}"
 
