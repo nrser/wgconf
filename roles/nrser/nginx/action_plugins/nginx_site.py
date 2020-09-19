@@ -83,7 +83,7 @@ class NginxSite(Proper):
     proxy_dest          = prop( str,
                                 from_method('_default_proxy_dest') )
     proxy_websockets    = prop( bool,
-                                from_var('nginx_websockets', False) )
+                                from_var('nginx_proxy_websockets', False) )
     
     def __init__(self, args, vars):
         self.vars = vars
@@ -153,7 +153,7 @@ class NginxSite(Proper):
         return (self._config_for(scheme) for scheme in ('http', 'https'))
 
 class ActionModule(ComposeAction):    
-    def compose(self):
+    def compose(self):        
         site = NginxSite(self._task.args, self._task_vars)
                 
         for config in site.configs:            

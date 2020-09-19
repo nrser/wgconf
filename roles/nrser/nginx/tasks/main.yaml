@@ -1,0 +1,15 @@
+# - nginx_package:
+
+  # - include_tasks: "{{ lookup('os_tasks', (role_path, 'tasks/os') | path) }}"
+
+- when: nginx_dhparam | test_task_args
+  nginx_dhparam: "{{ nginx_dhparam | to_task_args }}"
+
+- when: nginx_config | test_task_args
+  nginx_config: "{{ nginx_config | to_task_args }}"
+
+- when: nginx_service | test_task_args
+  nginx_service: "{{ nginx_service | to_task_args }}"
+
+- loop: "{{ nginx_sites }}"
+  nginx_site: "{{ item }}"
