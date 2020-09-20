@@ -4,6 +4,14 @@
     update_cache: true
     cache_valid_time: "{{ apt_cache_valid_time | default(86400) }}"
 
+# # Firewall
+# nginx_firewall_allow: all
+# _nginx_ufw_names:
+#   http: Nginx HTTP
+#   https: Nginx HTTPS
+#   all: Nginx Full
+#   full: Nginx Full
+    
 - when: nginx_firewall_allow in _nginx_ufw_names
   ufw:
     # https://gist.github.com/AJMaxwell/3b94939a61559b47c2c4dc0ff265d172

@@ -1,4 +1,6 @@
-# Global defaults
+# Role-Wide Defaults
+# ============================================================================
+
 nginx_state: present
 nginx_config_dir: /etc/nginx
 nginx_run_dir: /run
@@ -7,18 +9,14 @@ nginx_exe: /usr/sbin/nginx
 nginx_proxy_websockets: no
 nginx_lets_encrypt: no
 
+# Role-Action Defaults
+# ============================================================================
+
 nginx_dhparam: yes
 
 nginx_config: yes
 nginx_config_validate: "{{ nginx_exe }} -t -c %s"
 
 nginx_service: yes
-nginx_sites: []
 
-# # Firewall
-# nginx_firewall_allow: all
-# _nginx_ufw_names:
-#   http: Nginx HTTP
-#   https: Nginx HTTPS
-#   all: Nginx Full
-#   full: Nginx Full
+nginx_sites: []
