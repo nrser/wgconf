@@ -11,4 +11,4 @@ DEFAULTS = dict(
 
 class ActionModule(ComposeAction):
     def compose(self):
-        self.run_task( 'service', **self.compose_args(defaults=DEFAULTS) )
+        self.tasks.service( **self.collect_args(defaults=DEFAULTS) )

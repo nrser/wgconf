@@ -25,8 +25,6 @@ class ActionModule(ComposeAction):
             },
         }
         
-        defaults_var = self._task_vars.get(DEFAULTS_VAR_NAME, {})
-        
         prefixed_vars = self.prefixed_vars(
             omit=('nginx_config_dir', DEFAULTS_VAR_NAME)
         )
@@ -34,7 +32,7 @@ class ActionModule(ComposeAction):
         template_task_args = {}
         template_task_vars = {}
         
-        for params in (defaults, defaults_var, prefixed_vars, self._task.args):
+        for params in (defaults, prefixed_vars, self._task.args):
             for name, value in params.items():
                 if name == 'vars':
                     template_task_vars.update(value)
@@ -45,9 +43,8 @@ class ActionModule(ComposeAction):
             self.render(template_task_args['dest'])
         )
         
-        self.run_task(
-            'template',
-            { **self._task_vars, **template_task_vars },
+        self.tasks.template(
+            _task_vars = { **self._task_vars, **template_task_vars },
             **template_task_args,
         )
         

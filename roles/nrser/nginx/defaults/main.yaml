@@ -4,11 +4,14 @@ nginx_config_dir: /etc/nginx
 nginx_run_dir: /run
 nginx_log_dir: /var/log/nginx
 nginx_exe: /usr/sbin/nginx
-nginx_config_validate: "{{ nginx_exe }} -t -c %s"
 nginx_proxy_websockets: no
+nginx_lets_encrypt: no
 
 nginx_dhparam: yes
+
 nginx_config: yes
+nginx_config_validate: "{{ nginx_exe }} -t -c %s"
+
 nginx_service: yes
 nginx_sites: []
 
@@ -19,4 +22,3 @@ nginx_sites: []
 #   https: Nginx HTTPS
 #   all: Nginx Full
 #   full: Nginx Full
-

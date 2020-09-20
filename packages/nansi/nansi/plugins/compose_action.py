@@ -3,10 +3,13 @@ import pprint
 import logging
 from abc import abstractmethod
 from collections.abc import Mapping
+from functools import partial
 
 from ansible.plugins.action import ActionBase
 from ansible.utils.display import Display
 from ansible.errors import AnsibleError
+
+from nansi.template.var_values import VarValues
 
 LOG = log = logging.getLogger(__name__)
 D = Display()
@@ -18,6 +21,35 @@ class ComposedActionFailedError(RuntimeError): #(AnsibleError):
         self.name = name
         self.action = action
         self.result = result
+
+class TaskRunner:
+    def __init__(self, compose_action, task_name):
+        self.compose_action = compose_action
+        self.task_name = task_name
+    
+    def __call__(self, _task_vars=None, **args):
+        return self.compose_action.run_task(
+            name=self.task_name,
+            args=args,
+            task_vars=_task_vars,
+        )
+
+class Tasks:
+    '''Nicety wrapper assigned to `ComposeAction#tasks`, allowing you to do:
+    
+        self.tasks.file(
+            path = 'some/path',
+            state = 'absent',
+        )
+    
+    Attribute access returns `functools.partial( compose_action, name)`.
+    '''
+    def __init__(self, compose_action: ComposeAction):
+        self.__compose_action = compose_action
+    
+    def __getattr__(self, task_name):
+        return TaskRunner(self.__compose_action, task_name)
+        # return partial(self.__compose_action.run_task, task_name)
 
 class ComposeAction(ActionBase):
     
@@ -39,11 +71,11 @@ class ComposeAction(ActionBase):
             value = self._task_vars[var]
         return self._templar.template(value)
     
-    def prefixed_vars(self, prefix: str=None, omit=tuple()):
+    def prefixed_vars(self, prefix: Optional[str]=None, omit=tuple()):
         if prefix is None:
             prefix = self._task.action
         if not prefix.endswith('_'):
-            prefix = prefix + '-'
+            prefix = prefix + '_'
         if isinstance(omit, str):
             omit = tuple(omit)
         return {
@@ -53,13 +85,15 @@ class ComposeAction(ActionBase):
             if (name not in omit and name.startswith(prefix))
         }
     
-    def compose_args(self, defaults={}):
-        var_prefix = f"{self._task.action}_"
-        defaults_var_name = f"{self._task.action}_defaults"
+    def collect_args(
+        self,
+        defaults={},
+        omit_vars=tuple(),
+        var_prefix=None
+    ):
         return {
             **defaults,
-            **self._task_vars.get(defaults_var_name, {}),
-            **self.prefixed_vars(var_prefix, omit=defaults_var_name),
+            **self.prefixed_vars(prefix=var_prefix, omit=omit_vars),
             **self._task.args,
         }
     
@@ -81,15 +115,17 @@ class ComposeAction(ActionBase):
         if task_vars is None: # Hope not, not sure what that would mean..?
             task_vars = {}
         
-        for attr_name in ('_task_vars', '_result'):
+        for attr_name in ('_task_vars', '_result', 'tasks', 'var_values'):
             if hasattr(self, attr_name):
                 raise RuntimeError(
                     f"Already *has* self.{attr_name}: " +
                     repr(getattr(self, attr_name))
                 )
         
+        self.tasks = Tasks(self)
         self._task_vars = task_vars
         self._result = result
+        self.var_values = VarValues(self._templar, task_vars)
         
         try:
             self.compose()
@@ -114,15 +150,15 @@ class ComposeAction(ActionBase):
         
         return self._result
     
-    def run_task(self, name, _task_vars=None, **raw_args):
-        if _task_vars is None:
-            _task_vars = self._task_vars
+    def run_task(self, name, args, task_vars=None):
+        if task_vars is None:
+            task_vars = self._task_vars
         # Since they're becoming args to tasks, any variables that may have 
         # ended up in here need to be template rendered before execution
-        args = self.render(raw_args)
+        args = self.render(args)
         task = self._task.copy()
         task.action = name
-        task.args = self.render(args)
+        task.args = args
         action = self._shared_loader_obj.action_loader.get(
             task.action,
             task=task,
@@ -137,11 +173,11 @@ class ComposeAction(ActionBase):
             # raise RuntimeError(f"Action {repr(name)} not found")
             result = self._execute_module(
                 name,
-                module_args = args,
-                task_vars = _task_vars,
+                module_args=args,
+                task_vars=task_vars,
             )
         else:
-            result = action.run(task_vars=_task_vars)
+            result = action.run(task_vars=task_vars)
         
         if result.get('failed', False):
             self.dump(f"{name} FAILED RESULT", result)

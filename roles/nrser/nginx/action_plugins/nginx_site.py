@@ -17,8 +17,17 @@ nansi_log = logging.getLogger('nansi')
 nansi_log.setLevel(logging.DEBUG)
 nansi_log.addHandler(DisplayHandler(D))
 
-def from_var(name, default=None):
-    return lambda self: self.vars.get(name, default)
+def from_var(name, *args):
+    args_len = len(args)
+    if args_len == 0:
+        return lambda self: self.vars[name]
+    elif args_len == 1:
+        return lambda self: self.vars.get(name, args[0])
+    else:
+        raise TypeError(
+            "from_var() takes 1-2 positional arguments but was given " +
+            str(args_len)
+        )
 
 def from_method(name):
     return lambda self: getattr(self, name)()
@@ -54,9 +63,9 @@ class NginxSite(Proper):
     ### Optional ###
     
     # Direcotry locations, pulled from global `nginx_` vars, with fallbacks
-    config_dir  = prop( str, from_var('nginx_config_dir', '/etc/nginx') )
-    run_dir     = prop( str, from_var('nginx_run_dir', '/run') )
-    log_dir     = prop( str, from_var('nginx_log_dir', '/var/log/nginx') )
+    config_dir  = prop( str, from_var('nginx_config_dir') )
+    run_dir     = prop( str, from_var('nginx_run_dir') )
+    log_dir     = prop( str, from_var('nginx_log_dir') )
     
     state               = prop( STATE_TYPE, 'enabled' )
     server_name         = prop( str, from_method('_default_server_name') )
@@ -69,7 +78,7 @@ class NginxSite(Proper):
     http_template       = prop( str, role_path('templates/http.conf') )
     https_template      = prop( str, role_path('templates/https.conf') )
     
-    lets_encrypt        = prop( bool, from_var('nginx_lets_encrypt', False) )
+    lets_encrypt        = prop( bool, from_var('nginx_lets_encrypt') )
     
     proxy               = prop( bool, False )
     
@@ -83,14 +92,11 @@ class NginxSite(Proper):
     proxy_dest          = prop( str,
                                 from_method('_default_proxy_dest') )
     proxy_websockets    = prop( bool,
-                                from_var('nginx_proxy_websockets', False) )
+                                from_var('nginx_proxy_websockets') )
     
     def __init__(self, args, vars):
         self.vars = vars
-        super().__init__(**{
-            **vars.get('nginx_site_defaults', {}),
-            **args
-        })
+        super().__init__(**args)
 
     @property
     def sites_available_dir(self):
@@ -154,34 +160,30 @@ class NginxSite(Proper):
 
 class ActionModule(ComposeAction):    
     def compose(self):        
-        site = NginxSite(self._task.args, self._task_vars)
+        site = NginxSite(self.collect_args(), self.var_values)
                 
         for config in site.configs:            
             if config.available:
-                self.run_task(
-                    'template',
-                    { **self._task_vars, 'site': site },
-                    src     = config.conf_template,
-                    dest    = config.conf_path,
-                    backup  = True,
+                self.tasks.template(
+                    _task_vars  = { **self._task_vars, 'site': site },
+                    src         = config.conf_template,
+                    dest        = config.conf_path,
+                    backup      = True,
                 )
                 if config.enabled:
-                    self.run_task(
-                        'file',
+                    self.tasks.file(
                         src     = config.conf_path,
                         dest    = config.link_path,
                         state   = 'link',
                     )
                 else:
-                    self.run_task(
-                        'file',
+                    self.tasks.file(
                         path    = config.link_path,
                         state   = 'absent',
                     )
             else:
                 for path in (config.link_path, config.conf_path):
-                    self.run_task(
-                        'file',
+                    self.tasks.file(
                         path    = path,
                         state   = 'absent',
                     )
