@@ -3,7 +3,6 @@ import pprint
 import logging
 from abc import abstractmethod
 from collections.abc import Mapping
-from functools import partial
 
 from ansible.plugins.action import ActionBase
 from ansible.utils.display import Display
@@ -49,7 +48,6 @@ class Tasks:
     
     def __getattr__(self, task_name):
         return TaskRunner(self.__compose_action, task_name)
-        # return partial(self.__compose_action.run_task, task_name)
 
 class ComposeAction(ActionBase):
     
