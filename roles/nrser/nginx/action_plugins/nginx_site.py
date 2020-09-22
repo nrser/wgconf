@@ -160,12 +160,13 @@ class NginxSite(Proper):
 
 class ActionModule(ComposeAction):    
     def compose(self):        
-        site = NginxSite(self.collect_args(), self.var_values)
+        site = NginxSite(self.collect_args(), self._var_values)
                 
         for config in site.configs:            
             if config.available:
-                self.tasks.template(
-                    _task_vars  = { **self._task_vars, 'site': site },
+                self.tasks.template.add_vars(
+                    site        = site
+                )(
                     src         = config.conf_template,
                     dest        = config.conf_path,
                     backup      = True,

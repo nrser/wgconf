@@ -1,0 +1,115 @@
+from __future__ import annotations
+from collections.abc import Mapping
+from typing import *
+from os.path import join, realpath, dirname
+
+from nansi.plugins.compose_action import ComposeAction
+from nansi.os_resolve import os_map_resolve, OSResolveError
+
+def role_path(rel_path: str) -> str:
+    return realpath(join(dirname(__file__), '..', rel_path))
+
+ROLE_STATES = ('present', 'absent', 'latest')
+
+ABSENT_ACTION_STATES = ('absent', 'deleted')
+
+APT_DEFAULTS = dict(
+    update_cache        = True,
+    cache_valid_time    = (24 * 60 * 60), # 24 hours, in seconds
+    # Want this *somewhere* for removal? Gets rid of config files.
+    purge               = True,
+    # autoremove is also a consideration, but seems like it's independent of
+    # state and full-system..?
+)
+
+class ActionModule(ComposeAction):
+    '''
+    '''
+    
+    def common_defaults(self):
+        return dict(
+            name = 'nginx',
+        )
+    
+    def apt(self):
+        '''Manage the package via the [apt][1] module.
+        
+        Arguments are merged from lowest (1) to highest (5) priority:
+        
+        1.  Nansi's build-in `APT_DEFAULTS`.
+        2.  `apt_<name>` variables present, such as `apt_update_cache` becoming
+            the `update_cache` argument **except** `apt_name` and `apt_state`,
+            which are ignored (doesn't pick-up a default package `name` or
+            `state` ).
+        3.  Return value of the `common_defaults()` method.
+        # 4.  Variables `nginx_package_name` and `nginx_package_state`, becoming
+        #     `name` and `state`, respectively.
+        5.  Arguments given directly to the `nginx_package` task.
+        
+        If arguments `name` or `state` end up being mappings after the merge,
+        `nansi.os_resolve.os_map_resolve()` is run on them, allowing them to
+        carry os-dependent values.
+        
+        [apt]: https://docs.ansible.com/ansible/latest/modules/apt_module.html
+        '''
+        
+        apt_args = dict(
+            **APT_DEFAULTS,
+            **self.prefixed_vars(prefix="apt_", omit=("name", "state")),
+        )
+        
+        mod_args = self.collect_args( defaults = self.common_defaults() )
+        
+        for name in ('name', 'state'):
+            if name in mod_args and isinstance(mod_args[name], Mapping):
+                mod_args[name] = os_map_resolve(
+                    self._task_vars['ansible_facts'],
+                    mod_args[name]
+                )
+        
+        args = { **apt_args, **mod_args }
+        
+        self.dump('args', args)
+        
+        self.tasks.apt(**args)
+    
+    # def resolve_state(self):
+    #     role_state = self._var_values['nginx_state']
+        
+    #     if role_state not in ROLE_STATES:
+    #         raise TypeError(
+    #             f"`nginx_state` must be one of {ROLE_STATES}; " +
+    #             f"found {type(role_state)} {repr(role_state)}"
+    #         )
+        
+    #     action_state = self._task.args.get(
+    #         'state',
+    #         self._var_values.get('nginx_package_state')
+    #     )
+        
+    #     if isinstance(action_state, Mapping):
+    #         try:
+    #             action_state = os_map_resolve(
+    #                 self._task_vars['ansible_facts'],
+    #                 action_state,
+    #             )
+    #         except OSResolveError:
+    #             action_state = None
+        
+    #     if action_state is None:
+    #         return role_state
+        
+    #     if role_state == 'absent' and action_state not in ABSENT_ACTION_STATES:
+    #         raise 
+        
+    #     return action_state
+    
+    def compose(self):
+        methods = {
+            'family': {
+                'debian': self.apt,
+            }
+        }
+        
+        os_map_resolve(self._task_vars['ansible_facts'], methods)()
+        
