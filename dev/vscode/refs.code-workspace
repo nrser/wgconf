@@ -1,0 +1,17 @@
+{
+	"folders": [
+		{
+			"name": "cpython",
+			"path": "../../../../../../python/cpython"
+		},
+		{
+			"name": "ansible",
+			"path": "../../../../../../ansible/ansible"
+		},
+		{
+			"name": "rich",
+			"path": "../../../../../../willmcgugan/rich"
+		}
+	],
+	"settings": {}
+}
