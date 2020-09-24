@@ -58,7 +58,12 @@ class ActionModule(ComposeAction):
             **self.prefixed_vars(prefix="apt_", omit=("name", "state")),
         )
         
-        mod_args = self.collect_args( defaults = self.common_defaults() )
+        mod_args = self.collect_args(
+            defaults = {
+                **self.common_defaults(),
+                **dict(name = ['nginx', 'nginx-commmon']), # To rm everything
+            },
+        )
         
         for name in ('name', 'state'):
             if name in mod_args and isinstance(mod_args[name], Mapping):
@@ -69,40 +74,9 @@ class ActionModule(ComposeAction):
         
         args = { **apt_args, **mod_args }
         
-        self.dump('args', args)
+        self.log.debug('args', args)
         
         self.tasks.apt(**args)
-    
-    # def resolve_state(self):
-    #     role_state = self._var_values['nginx_state']
-        
-    #     if role_state not in ROLE_STATES:
-    #         raise TypeError(
-    #             f"`nginx_state` must be one of {ROLE_STATES}; " +
-    #             f"found {type(role_state)} {repr(role_state)}"
-    #         )
-        
-    #     action_state = self._task.args.get(
-    #         'state',
-    #         self._var_values.get('nginx_package_state')
-    #     )
-        
-    #     if isinstance(action_state, Mapping):
-    #         try:
-    #             action_state = os_map_resolve(
-    #                 self._task_vars['ansible_facts'],
-    #                 action_state,
-    #             )
-    #         except OSResolveError:
-    #             action_state = None
-        
-    #     if action_state is None:
-    #         return role_state
-        
-    #     if role_state == 'absent' and action_state not in ABSENT_ACTION_STATES:
-    #         raise 
-        
-    #     return action_state
     
     def compose(self):
         methods = {

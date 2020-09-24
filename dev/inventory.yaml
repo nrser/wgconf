@@ -1,0 +1,6 @@
+all:
+  hosts:
+    minimao:
+      ansible_host: 10.0.1.32
+      ansible_connection: ssh
+      ansible_python_interpreter: /usr/bin/python3

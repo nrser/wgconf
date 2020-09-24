@@ -9,7 +9,7 @@ from ansible.utils.display import Display
 from nansi.plugins.compose_action import ComposeAction
 from nansi.proper import Proper, prop
 
-from nansi.display_handler import DisplayHandler
+from nansi.logging.display_handler import DisplayHandler
 
 D = Display()
 

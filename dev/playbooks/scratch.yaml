@@ -1,32 +1,13 @@
 ---
 - name: Temp minimao playbook
-  hosts: localhost
+  hosts: minimao
   gather_facts: no
   
   roles:
-    - role: examples/action_plugin
+    - role: scratch
   
   tasks:
-    - loop:
-        - absent
-        - directory
-      file:
-        path: ../tmp
-        state: "{{ item }}"
-    
-    - do_task:
-        name: copy
-        args:
-          dest: ../tmp/blah.txt
-          content: Blah blah!
-        
-    - do_tasks:
-        tasks:
-          - copy:
-              dest: ../tmp/a.txt
-              content: AAAA!
-          - copy:
-              dest: ../tmp/b.txt
-              content: BBBB!
+    - scratch:
+        name: Dawg
     
     

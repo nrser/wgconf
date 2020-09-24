@@ -1,5 +1,4 @@
 from __future__ import annotations
-import pprint
 import logging
 from abc import abstractmethod
 from collections.abc import Mapping
@@ -7,12 +6,14 @@ from collections.abc import Mapping
 from ansible.plugins.action import ActionBase
 from ansible.utils.display import Display
 from ansible.errors import AnsibleError
+from ansible import constants as C
 
+import nansi.logging
+from nansi.logging.test import test_logger
 from nansi.template.var_values import VarValues
 
 LOG = log = logging.getLogger(__name__)
 D = Display()
-PP = pprint.PrettyPrinter(indent=4)
 
 class ComposedActionFailedError(RuntimeError): #(AnsibleError):
     def __init__(self, msg, name, action, result):
@@ -65,11 +66,11 @@ class TaskRunner:
         self._task_name = task_name
         self._task_vars = task_vars
     
-    def run(self, **args):
+    def run(self, **task_args):
         return self._compose_action.run_task(
-            name=self._task_name,
-            args=args,
-            task_vars=self._task_vars,
+            self._task_name,
+            self._task_vars,
+            **task_args
         )
     
     __call__ = run
@@ -110,24 +111,22 @@ class Tasks:
     def __getattr__(self, task_name: str) -> TaskRunner:
         return TaskRunner(self.__compose_action, task_name)
 
-class ComposeAction(ActionBase):
-    
+class ComposeAction(ActionBase):    
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
-        self.tasks = Tasks(self)
-    
-    def dump(self, name, value, method='v'):
-        try:
-            value_str = PP.pformat(value)
-        except Exception as e:
-            value_str = f"!ERROR {e}"
         
-        f = getattr(D, method)
-        f(" ")
-        f(f"# *** {name} ***")
-        f(f"# type: {type(value)}")
-        f(f"value = {value_str}")
-        f(f"# *** /{name} ***")
+        # *Not* dependent on `run()`-time information, so this can be setup now
+        self.tasks = Tasks(self)
+        
+        nansi.logging.setup_for_display()
+        
+        self.log = logging.getLogger(
+            f"{ComposeAction.__module__}.{ComposeAction.__name__}" +
+            f"( _task.action = {repr(self._task.action)} )"
+        )
+    
+    # Helper Methods
+    # ========================================================================
     
     def render(self, value):
         return self._templar.template(value)
@@ -143,7 +142,6 @@ class ComposeAction(ActionBase):
             (name if name.startswith(prefix) else f"{prefix}{name}")
             for name in omit
         }
-        self.dump('omit', omit)
         return {
             name.replace(prefix, '', 1): value
             for name, value
@@ -163,8 +161,11 @@ class ComposeAction(ActionBase):
             **self._task.args,
         }
     
+    # Task Commposition Methods
+    # =========================================================================
+    
     @abstractmethod
-    def compose(self):
+    def compose(self) -> None:
         '''Responsible for executing composed sub-tasks by calling
         `#run_task()`, called automatically inside `#run()`.
         
@@ -173,8 +174,11 @@ class ComposeAction(ActionBase):
         pass
     
     def run(self, tmp=None, task_vars=None):
+        self.log.debug(f"Starting run()...")
+        
         result = super().run(tmp, task_vars)
         result['changed'] = False
+        result['results'] = []
         
         del tmp # Some Ansible legacy shit I guess
         
@@ -215,15 +219,18 @@ class ComposeAction(ActionBase):
         
         return self._result
     
-    def run_task(self, name, args, task_vars=None):
+    def run_task(self, name, task_vars=None, /, **task_args):
+        '''
+        '''
+        
         if task_vars is None:
             task_vars = self._task_vars
         # Since they're becoming args to tasks, any variables that may have 
         # ended up in here need to be template rendered before execution
-        args = self.render(args)
+        task_args = self.render(task_args)
         task = self._task.copy()
         task.action = name
-        task.args = args
+        task.args = task_args
         action = self._shared_loader_obj.action_loader.get(
             task.action,
             task=task,
@@ -238,11 +245,13 @@ class ComposeAction(ActionBase):
             # raise RuntimeError(f"Action {repr(name)} not found")
             result = self._execute_module(
                 name,
-                module_args=args,
+                module_args=task_args,
                 task_vars=task_vars,
             )
         else:
             result = action.run(task_vars=task_vars)
+        
+        self._result['results'].append(result)
         
         if result.get('failed', False):
             self.dump(f"{name} FAILED RESULT", result)

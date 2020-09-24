@@ -8,7 +8,7 @@ from ansible.errors import AnsibleError, AnsibleParserError
 from ansible.plugins.lookup import LookupBase
 from ansible.utils.display import Display
 
-from nansi.display_handler import DisplayHandler
+from nansi.logging.display_handler import DisplayHandler
 
 display = Display()
 
