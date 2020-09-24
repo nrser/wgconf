@@ -53,10 +53,10 @@ class ActionModule(ComposeAction):
         [apt]: https://docs.ansible.com/ansible/latest/modules/apt_module.html
         '''
         
-        apt_args = dict(
+        apt_args = {
             **APT_DEFAULTS,
             **self.prefixed_vars(prefix="apt_", omit=("name", "state")),
-        )
+        }
         
         mod_args = self.collect_args(
             defaults = {
