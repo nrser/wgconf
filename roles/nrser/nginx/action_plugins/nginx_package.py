@@ -61,7 +61,7 @@ class ActionModule(ComposeAction):
         mod_args = self.collect_args(
             defaults = {
                 **self.common_defaults(),
-                **dict(name = ['nginx', 'nginx-commmon']), # To rm everything
+                **dict(name = ['nginx', 'nginx-common']), # To rm everything
             },
         )
         

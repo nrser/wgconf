@@ -254,7 +254,7 @@ class ComposeAction(ActionBase):
         self._result['results'].append(result)
         
         if result.get('failed', False):
-            self.dump(f"{name} FAILED RESULT", result)
+            self.log.debug(f"{name} FAILED RESULT", result)
             raise ComposedActionFailedError(
                 result.get('msg', ''), name, action, result
             )
