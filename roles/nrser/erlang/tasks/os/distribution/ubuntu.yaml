@@ -1,5 +1,6 @@
 - name: Install the gpg key for packages.erlang-solutions.com/ubuntu
   apt_key:
+    id: 2C8B586B1FC61E31C836D7B450B12719341540CB
     url: https://packages.erlang-solutions.com/ubuntu/erlang_solutions.asc
     state: present
 

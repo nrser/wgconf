@@ -3,6 +3,7 @@
 
 - name: Install the gpg key for nodejs
   apt_key:
+    id: 302755F9E22EDC1ABB62E9B56C5CDECAAA01DA2C
     url: "https://deb.nodesource.com/gpgkey/nodesource.gpg.key"
     state: present
 

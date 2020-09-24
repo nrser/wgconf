@@ -12,6 +12,7 @@
 
 - name: Install the gpg key for www.postgresql.org
   apt_key:
+    id: 790BC7277767219C42C86F933B4FE6ACC0B21F32
     url: https://www.postgresql.org/media/keys/ACCC4CF8.asc
     state: present
     
@@ -37,27 +38,3 @@
     name: "{{ pg_service_name }}"
     enabled: "{{ pg_service_enabled }}"
     state: "{{ pg_service_state }}"
-
-# - name: Install postgres
-#   apt:
-#     name: "esl-erlang={{ erlang_version }}"
-#     state: present
-#     update_cache: true
-#     cache_valid_time: "{{ apt_cache_valid_time }}"
-
-# - name: Install postgres packages
-#   apt:
-#     update_cache: true
-#     cache_valid_time: "{{ apt_cache_valid_time }}"
-#     pkg:
-#       - postgresql
-#       - postgresql-contrib
-#       - libpq-dev
-#       # Ansible needs this
-#       - python-psycopg2
-
-# - name: Enable and start postgres
-#   service:
-#     name: postgresql
-#     enabled: true
-#     state: started

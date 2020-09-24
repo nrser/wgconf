@@ -2,6 +2,7 @@
 
 - name: Add the gpg key for Yarn
   apt_key:
+    id: DE5786295D8C497E4D99124102820C39D50AF136
     url: "https://dl.yarnpkg.com/debian/pubkey.gpg"
     state: present
 
