@@ -62,9 +62,6 @@ from collections import namedtuple
 
 from ansible.module_utils.basic import AnsibleModule
 
-STATE_ENABLED = 'enabled'
-STATE_DISABLED = 'disabled'
-
 PARSE_RE = re.compile(r'^([\w]+):\ (.+)\ \((.+)\)$')
 
 class FailError(Exception):
