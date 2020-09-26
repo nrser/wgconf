@@ -1,0 +1,16 @@
+- some_config:
+    # Set
+    name: value
+    # Delete
+    blame: null
+    # Deep set and delete
+    some.thing: value
+    other.thing: null
+    # Lists...
+    # ========
+    #
+    # Appending
+    my_list[]: v
+    my_list: v
+    
+    
