@@ -35,8 +35,8 @@ class prop(property):
     
     def _name(self, instance) -> str:
         return need(
+            lambda name: getattr(instance.__class__, name, None) is self,
             dir(instance.__class__),
-            lambda name: getattr(instance.__class__, name, None) is self
         )
     
     def _names(self, instance) -> str:

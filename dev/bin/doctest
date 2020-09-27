@@ -1,0 +1,89 @@
+#!/usr/bin/env python
+
+import sys
+from glob import glob as _glob
+from pathlib import Path
+import re
+from subprocess import call, run
+
+from rich.console import Console
+
+C = Console()
+
+REPO_ROOT = (Path(__file__).parent / '..' / '..').resolve()
+NANSI_ROOT = REPO_ROOT / 'packages' / 'nansi'
+
+ARGS = sys.argv[1:]
+
+def glob(path):
+    return _glob(str(path), recursive=True)
+
+def rel(path):
+    try:
+        return f"./{Path(path).relative_to(Path.cwd())}"
+    except:
+        return str(path)
+
+def is_doctest(path):
+    with open(path, 'r') as f:
+        for line in f:
+            # if re.match(r'\s*\>\>\>', line):
+            if re.match(r'\s*doctest\.testmod\(\)', line):
+                return True
+    return False
+
+def module_for(path):
+    return ".".join(
+        str(Path(path).relative_to(NANSI_ROOT))[:-3].split('/')
+    )
+
+def nansi_modules():
+    return [
+        (module_for(path), path)
+        for path
+        in glob(NANSI_ROOT / 'nansi' / '**' / '*.py')
+        if is_doctest(path)
+    ]
+
+def plugins():
+    return [
+        path
+        for path
+        in glob(REPO_ROOT / 'roles' / '**' / '*_plugins' / '*.py')
+        if is_doctest(path)
+    ]
+
+def test(name, cmd):
+    r = run(cmd, capture_output=True, encoding='utf8')
+    if len(r.stdout) == 0:
+        C.print(":white_check_mark:", name)
+        return True
+    else:
+        C.print(r.stdout)
+        C.print(":x:", name)
+        return False
+
+def test_module(module):
+    return test(module, ['python', '-m', module])
+
+def test_file(path):
+    return test(rel(path), ['python', path])
+
+def is_nansi_module(path):
+    try:
+        Path(path).relative_to(NANSI_ROOT / 'nansi')
+    except: 
+        return False
+    return True
+
+if len(ARGS) == 0:
+    for module, path in nansi_modules():
+        test_module(module)
+    for path in plugins():
+        test_file(path)
+else:
+    for arg in ARGS:
+        if is_nansi_module(arg):
+            test_module(module_for(arg))
+        else:
+            test_file(arg)

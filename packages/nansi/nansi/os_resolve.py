@@ -300,8 +300,6 @@ def os_file_resolve(ansible_facts, base_dir, exts, lower=True):
     ...     kernel                  = '18.7.0',
     ... )
     
-    >>> from nansi.test_utils import temp_paths
-    
     >>> handle, base_dir, rel = temp_paths(
     ...     'distribution/ubuntu/version/18.04.yaml',
     ...     'distribution/ubuntu.json',
@@ -379,3 +377,8 @@ def os_file_resolve(ansible_facts, base_dir, exts, lower=True):
         f"Failed to resolve os file starting from {base_dir}",
         tried
     )
+
+if __name__ == '__main__':
+    import doctest
+    from nansi.utils.doctesting import temp_paths
+    doctest.testmod()

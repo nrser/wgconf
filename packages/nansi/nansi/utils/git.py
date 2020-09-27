@@ -9,7 +9,11 @@ def repo_pathspace(origin_url: str) -> str:
     parse = urlparse(origin_url)
     if parse.scheme != 'https' and parse.scheme != 'http':
         raise ValueError(
-            "Sorry, repo_rel_path() only handles http(s) urls, " +
+            "Sorry, repo_pathspace() only handles http(s) urls, " +
             f"given {repr(origin_url)} (scheme={repr(parse.scheme)})"
         )
     return parse.hostname + re.sub(r'\.git$', '', parse.path)
+
+if __name__ == '__main__':
+    import doctest
+    doctest.testmod()
