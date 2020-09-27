@@ -10,7 +10,6 @@
 # 
 
 from pathlib import Path
-import shlex
 from functools import reduce
 from os import path, PathLike
 from typing import *
@@ -83,7 +82,7 @@ def rel(path: str, to: Optional[str] = None) -> str:
 def path_join(frags) -> str:
     '''It's just `os.path.join`, man.
     
-    >>> join(('a', 'b', 'c'))
+    >>> path_join(('a', 'b', 'c'))
     'a/b/c'
     
     Preferred usage style (Jinja2):
@@ -309,6 +308,7 @@ class FilterModule:
             ini_enc_value=ini_enc_value,
             f=f,
             path=path_join,
+            to_path=path_join,
             urljoin=urljoin,
             rel=rel,
             # dict_merge is included by Ansible as `combine`.
