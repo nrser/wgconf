@@ -5,10 +5,13 @@ DOCUMENTATION = '''
 ---
 module: hex_config
 short_description: Manage Hex config (Elixir package manager) through `mix`
+description:
+  - See above.
 options:
   state:
     description:
-      - Map of Hex config keys to desired values. A value of `null` deletes the
+      - >-
+          Map of Hex config keys to desired values. A value of `null` deletes the
         key, resetting it to it's default.
     default: {}
     type: dict
@@ -17,33 +20,11 @@ options:
       - Path to the `mix` executable on the target host.
     type: path
     default: /usr/bin/mix
-notes:
-  - >-
-      Hex config keys, presumed types, and defaults, as of Hex version `0.20.5`:
-      
-      |          key          | type |                  default                  |
-      | --------------------- | ---- | ----------------------------------------- |
-      | api_key               | str  | nil                                       |
-      | api_url               | str  | "https//hex.pm/api"                       |
-      | cacerts_path          | str  | nil                                       |
-      | diff_command          | str  | "git diff --no-index __PATH1__ __PATH2__" |
-      | home                  | str  | "/Users/nrser/.hex"                       |
-      | http_concurrency      | int  | 8                                         |
-      | http_proxy            | str  | nil                                       |
-      | http_timeout¹         | int  | nil                                       |
-      | https_proxy           | str  | nil                                       |
-      | mirror_url            | str  | nil                                       |
-      | no_verify_repo_origin | bool | false                                     |
-      | offline               | bool | false                                     |
-      | repos_key²            | ?    | nil                                       |
-      | resolve_verbose       | bool | false                                     |
-      | unsafe_https          | bool | false                                     |
-      | unsafe_registry       | bool | false                                     |
-      
-      - ¹ Does not seem to apply correctly within `mix deps.get`
-      - ² Undocumented?
 seealso:
-  - "https://hexdocs.pm/hex/Mix.Tasks.Hex.Config.html#module-config-keys"
+  - name: >-
+        `hex.config` Mix task documentation
+    link: "https://hexdocs.pm/hex/Mix.Tasks.Hex.Config.html#module-config-keys"
+    description: Describes the available config keys and values.
 '''
 
 EXAMPLES = '''
@@ -52,6 +33,30 @@ EXAMPLES = '''
     state:
       offline: yes
 '''
+
+# Hex config keys, presumed types, and defaults, as of Hex version `0.20.5`:
+# 
+# |          key          | type |                  default                  |
+# | --------------------- | ---- | ----------------------------------------- |
+# | api_key               | str  | nil                                       |
+# | api_url               | str  | "https//hex.pm/api"                       |
+# | cacerts_path          | str  | nil                                       |
+# | diff_command          | str  | "git diff --no-index __PATH1__ __PATH2__" |
+# | home                  | str  | "/Users/nrser/.hex"                       |
+# | http_concurrency      | int  | 8                                         |
+# | http_proxy            | str  | nil                                       |
+# | http_timeout¹         | int  | nil                                       |
+# | https_proxy           | str  | nil                                       |
+# | mirror_url            | str  | nil                                       |
+# | no_verify_repo_origin | bool | false                                     |
+# | offline               | bool | false                                     |
+# | repos_key²            | ?    | nil                                       |
+# | resolve_verbose       | bool | false                                     |
+# | unsafe_https          | bool | false                                     |
+# | unsafe_registry       | bool | false                                     |
+# 
+# ¹ Does not seem to apply correctly within `mix deps.get`
+# ² Undocumented?
 
 from typing import *
 import re
