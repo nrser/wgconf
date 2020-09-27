@@ -220,9 +220,6 @@ class ComposeAction(ActionBase):
         return self._result
     
     def run_task(self, name, task_vars=None, /, **task_args):
-        '''
-        '''
-        
         if task_vars is None:
             task_vars = self._task_vars
         # Since they're becoming args to tasks, any variables that may have 

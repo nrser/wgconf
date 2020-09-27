@@ -4,30 +4,16 @@ from typing import *
 from os.path import join, realpath, dirname
 
 from nansi.plugins.compose_action import ComposeAction
+from nansi.plugins.action.defaults import APT_DEFAULTS
 from nansi.os_resolve import os_map_resolve, OSResolveError
 
 def role_path(rel_path: str) -> str:
     return realpath(join(dirname(__file__), '..', rel_path))
 
-ROLE_STATES = ('present', 'absent', 'latest')
-
-ABSENT_ACTION_STATES = ('absent', 'deleted')
-
-APT_DEFAULTS = dict(
-    update_cache        = True,
-    cache_valid_time    = (24 * 60 * 60), # 24 hours, in seconds
-    # Want this *somewhere* for removal? Gets rid of config files.
-    purge               = True,
-    # autoremove is also a consideration, but seems like it's independent of
-    # state and full-system..?
-)
-
 class ActionModule(ComposeAction):
     
     def common_defaults(self):
-        return dict(
-            name = 'nginx',
-        )
+        return dict( name = 'nginx' )
     
     def apt(self):
         '''Manage the package via the [apt][1] module.
@@ -72,8 +58,6 @@ class ActionModule(ComposeAction):
         
         args = { **apt_args, **mod_args }
         
-        self.log.debug('args', args)
-        
         self.tasks.apt(**args)
     
     def compose(self):
@@ -82,6 +66,5 @@ class ActionModule(ComposeAction):
                 'debian': self.apt,
             }
         }
-        
         os_map_resolve(self._task_vars['ansible_facts'], methods)()
         
