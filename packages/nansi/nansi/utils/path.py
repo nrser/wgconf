@@ -1,4 +1,6 @@
-from pathlib import Path, PathLike
+from typing import *
+from pathlib import Path
+from os import PathLike
 
 def rel(path: PathLike, to: Optional[PathLike] = None) -> str:
     '''Relativize a path if it's a descendant, otherwise just return as-is.
