@@ -23,8 +23,6 @@ APT_DEFAULTS = dict(
 )
 
 class ActionModule(ComposeAction):
-    '''
-    '''
     
     def common_defaults(self):
         return dict(
