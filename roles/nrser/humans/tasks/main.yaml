@@ -56,6 +56,12 @@
     key: "https://github.com/{{ item.github }}.keys"
     exclusive: "{{ humans_authorized_key_exclusive }}"
 
+- when: humans_auth_admins_as_users
+  loop: "{{ humans_admins }}"
+  loop_control:
+    loop_var: _admin
+  include_tasks: "{{ role_path }}/tasks/_auth_admin_as_users.yaml"
+
 # it's much more secure to use ssh keys
 - name: Disallow SSH password authentication
   lineinfile:
@@ -75,7 +81,7 @@
   notify: ssh_restart
 
 - name: >-
-    ONLY allow login for humans group {{ humans_group | f }}
+    **ONLY** allow SSH login for humans group {{ humans_group | f }}
   lineinfile:
     dest: /etc/ssh/sshd_config
     regexp: "^\\#?AllowGroups"
