@@ -4,24 +4,24 @@
 # 
 
 - name: >-
-    Create admin group {{ users_admin_group | f }}
+    Create admin group {{ humans_admin_group | f }}
   group:
-    name: "{{ users_admin_group }}"
+    name: "{{ humans_admin_group }}"
     state: present
 
 - name: >-
-    Create humans group {{ users_humans_group | f }}
+    Create humans group {{ humans_group | f }}
   group:
-    name: "{{ users_humans_group }}"
+    name: "{{ humans_group }}"
     state: present
 
 - name: >-
-    Allow {{ users_admin_group | f }} group to have password-less sudo
+    Allow {{ humans_admin_group | f }} group to have password-less sudo
   lineinfile:
     dest: /etc/sudoers
     state: present
-    regexp: '^%{{ users_admin_group }}'
-    line: '%{{ users_admin_group }} ALL=(ALL) NOPASSWD: ALL'
+    regexp: '^%{{ humans_admin_group }}'
+    line: '%{{ humans_admin_group }} ALL=(ALL) NOPASSWD: ALL'
   
 - with_items: "{{ humans }}"
   name: Create human users
@@ -33,19 +33,19 @@
 
 - with_items: "{{ humans }}"
   name: >-
-    Add all human users to {{ users_humans_group | f }} group
+    Add all human users to {{ humans_group | f }} group
   user:
     name: "{{ item.name }}"
-    groups: "{{ users_humans_group }}"
+    groups: "{{ humans_group }}"
     append: true
 
 - with_items: "{{ humans }}"
   when: item.admin | default( false )
   name: >-
-    Add admin users to {{ users_admin_group | f }} group
+    Add admin users to {{ humans_admin_group | f }} group
   user:
     name: "{{ item.name }}"
-    groups: "{{ users_admin_group }}"
+    groups: "{{ humans_admin_group }}"
     append: true
   # command: "usermod -aG admin {{ item.name }}"
   
@@ -54,7 +54,7 @@
   authorized_key:
     user: "{{ item.name }}"
     key: "https://github.com/{{ item.github }}.keys"
-    exclusive: true
+    exclusive: "{{ humans_authorized_key_exclusive }}"
 
 # it's much more secure to use ssh keys
 - name: Disallow SSH password authentication
@@ -75,11 +75,11 @@
   notify: ssh_restart
 
 - name: >-
-    ONLY allow login for humans group {{ users_humans_group | f }}
+    ONLY allow login for humans group {{ humans_group | f }}
   lineinfile:
     dest: /etc/ssh/sshd_config
     regexp: "^\\#?AllowGroups"
-    line: "AllowGroups {{ users_humans_group }}"
+    line: "AllowGroups {{ humans_group }}"
     state: present
   notify: ssh_restart
 

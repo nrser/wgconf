@@ -1,2 +1,4 @@
-users_admin_group: admin
-users_humans_group: humans
+humans_admin_group: admin
+humans_group: humans
+
+humans_authorized_key_exclusive: true
