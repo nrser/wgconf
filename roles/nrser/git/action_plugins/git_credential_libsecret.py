@@ -61,6 +61,9 @@ class ActionModule(ComposeAction):
         self.tasks.git_config(
             scope   = 'system',
             name    = 'credential.helper',
-            value   = path.join( git_libsecret_path, 'git_libsecret_path' ),
+            value   = path.join(
+                        git_libsecret_path,
+                        'git-credential-libsecret'
+                    ),
         )
         
