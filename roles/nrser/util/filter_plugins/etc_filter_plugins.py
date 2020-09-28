@@ -43,7 +43,6 @@ class FilterModule:
             repo_pathspace  = nansi.utils.git.repo_pathspace,
         )
 
-
 if __name__ == '__main__':
     import doctest
     from nansi.utils.doctesting import template_for_filters
