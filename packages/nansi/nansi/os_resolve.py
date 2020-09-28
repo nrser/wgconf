@@ -3,7 +3,7 @@ import re
 import os
 import logging
 
-from nansi.util import dig, flatten
+from nansi.utils.collections import dig, flatten
 
 TAnsibleFacts = Mapping[str, Any]
 

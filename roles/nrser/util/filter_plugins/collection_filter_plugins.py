@@ -1,7 +1,7 @@
 from typing import *
 
-import nansi.util
-from nansi.util import TKey, TValue, find
+import nansi.utils.collections
+from nansi.utils.collections import TKey, TValue, find
 
 TDefaultKey     = TypeVar('TDefaultKey')
 TDefaultValue   = TypeVar('TDefaultValue')
@@ -211,7 +211,7 @@ class FilterModule:
             # https://docs.ansible.com/ansible/latest/user_guide/playbooks_filters.html#combining-hashes-dictionaries
             # 
             defaults        = defaults,
-            dig             = nansi.util.dig,
+            dig             = nansi.utils.collections.dig,
             has_any         = has_any,
             has_all         = has_all,
             find_has_all    = find_has_all,

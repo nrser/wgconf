@@ -5,7 +5,7 @@ import logging
 
 from typeguard import check_type
 
-from nansi.util import need
+from nansi.utils.collections import need
 
 LOG = log = logging.getLogger(__name__)
 

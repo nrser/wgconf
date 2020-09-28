@@ -14,20 +14,20 @@ TResult     = TypeVar('TResult')
 TKey        = TypeVar('TKey')
 TValue      = TypeVar('TValue')
 
-No = NewType('No', Union[None, Literal[False]])
+Nope = NewType('Nope', Union[None, Literal[False]])
 
-class NotFoundError(RuntimeError):
+class NotFoundError(Exception):
     pass
 
-def is_no(x: Any) -> bool:
+def is_nope(x: Any) -> bool:
     '''
-    >>> is_no(None)
+    >>> is_nope(None)
     True
     
-    >>> is_no(False)
+    >>> is_nope(False)
     True
     
-    >>> any(is_no(x) for x in ('', [], {}, 0, 0.0))
+    >>> any(is_nope(x) for x in ('', [], {}, 0, 0.0))
     False
     '''
     return x is None or x is False
@@ -60,7 +60,7 @@ def find(
     []
     '''
     for item in itr:
-        if not is_no(predicate(item)):
+        if not is_nope(predicate(item)):
             return item
     return not_found
 
@@ -89,12 +89,12 @@ def need(
     # find() can return None when the item was found if the item it matched was
     # None, so need to repeat logic here.
     for item in itr:
-        if not is_no(predicate(item)):
+        if not is_nope(predicate(item)):
             return item
     raise NotFoundError("Not found")
 
 def find_map(
-    fn: Callable[[TItem], Union[TResult, No]],
+    fn: Callable[[TItem], Union[TResult, Nope]],
     itr: Iterator[TItem],
     not_found: TNotFound=None,
 ) -> Union[TResult, TNotFound]:
@@ -110,12 +110,12 @@ def find_map(
     '''
     for item in itr:
         result = fn(item)
-        if not is_no(result):
+        if not is_nope(result):
             return result
     return not_found
     
 def need_map(
-    fn: Callable[[TItem], Union[TResult, No]],
+    fn: Callable[[TItem], Union[TResult, Nope]],
     itr: Iterator[TItem],
 ) -> TResult:
     # find_map() never returns None unless it's not found
@@ -181,9 +181,6 @@ def last(itr: Iterable[T]) -> Optional[T]:
 def pick(map: Mapping[K, V], keys: Container[K]) -> Dict[K, V]:
     return {key: value for key, value in map.items() if key in keys}
 
-def join_lines(lines: Iterable[str]) -> str:
-    return ''.join((f"{line}\n" for line in lines))
-
 def dig(target: Mapping, *key_path: Sequence):
     '''Like Ruby - get the value at a key-path, or `None` if any keys in the
     path are missing.
@@ -206,7 +203,6 @@ def dig(target: Mapping, *key_path: Sequence):
 
 def flatten(seq):
     return tuple(itertools.chain(*seq))
-
 
 if __name__ == '__main__':
     import doctest
