@@ -1,10 +1,16 @@
 from typing import *
+import logging
 
 import nansi.utils.collections
 from nansi.utils.collections import TKey, TValue, find
 
 TDefaultKey     = TypeVar('TDefaultKey')
 TDefaultValue   = TypeVar('TDefaultValue')
+
+from nansi.logging import get_plugin_logger
+
+log = LOG = get_plugin_logger(__file__)
+from nansi.logging.test import V
 
 def defaults(
     overrides: Mapping[TKey, TValue],
@@ -155,6 +161,20 @@ def has_all(obj, *args, **kwds):
     else:
         return _object_has_all(obj, *args, **kwds)
 
+def get(obj, name, *rest):
+    len_rest = len(rest)
+    if len_rest > 1:
+        raise TypeError(
+            f"get() takes from 2 to 3 positional arguments but "
+            "{2+len(rest)} were given"
+        )
+    if isinstance(obj, (Sequence, Mapping)):
+        if len_rest == 1:
+            return obj.get(name, rest[0])
+        return obj[name]
+    else:
+        return getattr(obj, name, *rest)
+
 def has_any(obj, *args, **kwds):
     '''Routes: 
     
@@ -212,11 +232,12 @@ class FilterModule:
             # 
             defaults        = defaults,
             dig             = nansi.utils.collections.dig,
-            has_any         = has_any,
-            has_all         = has_all,
             find_has_all    = find_has_all,
               find_by       = find_has_all,
             find_has_any    = find_has_any,
+            has_all         = has_all,
+            has_any         = has_any,
+            get             = get,
         )
 
 if __name__ == '__main__':

@@ -3,6 +3,8 @@ import logging
 from .display_handler import DisplayHandler
 from .log_record import LogRecord
 
+from nansi.utils.path import rel
+
 LOG = logging.getLogger(__name__)
 
 _handler = None
@@ -24,3 +26,7 @@ def setup_for_display():
     handler = get_handler()
     if handler not in pkg_logger.handlers:
         pkg_logger.addHandler(get_handler())
+
+def get_plugin_logger(file_path):
+    setup_for_display()
+    return logging.getLogger(f"nansi.<{rel(file_path)}>")
