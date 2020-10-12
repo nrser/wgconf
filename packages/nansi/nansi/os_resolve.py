@@ -54,10 +54,20 @@ def split_version(version_str: str) -> Optional[List[str]]:
     
     return match.group(0).split('.')   
 
+def path_format_fact(fact: str) -> str:
+    '''
+    >>> path_format_fact('Microsoft Windows Server 2016 Datacenter')
+    'microsoft_windows_server_2016_datacenter'
+    '''
+    return re.sub(r'\s+', '_', fact.strip().lower())
+
+def has_fact(ansible_facts: TAnsibleFacts, name: str) -> bool:
+    return RESOLVE_FACT_KEYS[name] in ansible_facts
+
 def get_fact(
     ansible_facts: TAnsibleFacts,
     name: str,
-    lower: bool = True,
+    format: Optional[Callable[[str], str]] = path_format_fact,
 ) -> str:
     key = RESOLVE_FACT_KEYS[name]
     if key not in ansible_facts:
@@ -71,45 +81,52 @@ def get_fact(
             f"Expected ansible_facts.{key} to be str, found a {type(fact)}: " +
             str(fact)
         )
-    if lower:
-        return fact.lower()
+    if format is not None:
+        return format(fact)
     return fact
 
 def print_facts(
     ansible_facts: TAnsibleFacts,
-    lower: bool = True,
+    format: Optional[Callable[[str], str]] = path_format_fact,
     printer = log.debug,
 ) -> None:
     printer("Resolution facts:")
     
     for name, key in RESOLVE_FACT_KEYS.items():
-        printer(
-            f"  {name}".ljust(16) +
-            f"= {get_fact(ansible_facts, name, lower=lower)}".ljust(24) +
-            f"(ansible_facts.{key})"
-        )
+        if has_fact(ansible_facts, name):
+            printer(
+                f"  {name}".ljust(16) +
+                f"= {get_fact(ansible_facts, name, format=format)}".ljust(24) +
+                f"(ansible_facts.{key})"
+            )
 
 def get_segments(
     ansible_facts: TAnsibleFacts,
-    lower: bool = True,
+    format: Optional[Callable[[str], str]] = path_format_fact,
 ) -> List[List[Tuple[str, str]]]:
     if log.isEnabledFor(logging.DEBUG):
-        print_facts(ansible_facts, lower=lower)
+        print_facts(ansible_facts, format=format)
     
     # Returns a list...
     return [
         # ...of lists...
         [
             # ...of (name, fact) tuples!
-            (name, get_fact(ansible_facts, name, lower=lower))
+            (name, get_fact(ansible_facts, name, format=format))
             # where each name comes from a "name list"
             for name in name_list
+            # if we have the fact (Windows at least has some differences)
+            if has_fact(ansible_facts, name)
         # and each name list is an entry in RESOLVE_ORDER
         ] for name_list
         in RESOLVE_ORDER
     ]
 
-def iter_os_key_paths(ansible_facts, fallback='any', lower=True):
+def iter_os_key_paths(
+    ansible_facts,
+    fallback='any',
+    format: Optional[Callable[[str], str]] = path_format_fact
+):
     '''Iterate over "key paths" to resolve relative to Ansible os facts,
     from most to least specific. Can be used to find files, dictionary values,
     etc.
@@ -159,9 +176,32 @@ def iter_os_key_paths(ansible_facts, fallback='any', lower=True):
     ('system', 'darwin', 'kernel', '18')
     ('system', 'darwin')
     ('any',)
+    
+    >>> ansible_facts = dict(
+    ...     distribution            = 'Microsoft Windows Server 2016 Datacenter',
+    ...     distribution_version    = '10.0.14393.0',
+    ...     os_family               = 'Windows',
+    ...     system                  = 'Win32NT',
+    ...     kernel                  = '10.0.14393.0',
+    ... )
+    >>> for i in iter_os_key_paths(ansible_facts):
+    ...     print(i)
+    ('distribution', 'microsoft_windows_server_2016_datacenter', 'version', '10.0.14393.0')
+    ('distribution', 'microsoft_windows_server_2016_datacenter', 'version', '10.0.14393')
+    ('distribution', 'microsoft_windows_server_2016_datacenter', 'version', '10.0')
+    ('distribution', 'microsoft_windows_server_2016_datacenter', 'version', '10')
+    ('distribution', 'microsoft_windows_server_2016_datacenter')
+    ('distribution', 'microsoft_windows_server_2016_datacenter')
+    ('family', 'windows')
+    ('system', 'win32nt', 'kernel', '10.0.14393.0')
+    ('system', 'win32nt', 'kernel', '10.0.14393')
+    ('system', 'win32nt', 'kernel', '10.0')
+    ('system', 'win32nt', 'kernel', '10')
+    ('system', 'win32nt')
+    ('any',)
     '''
     
-    for segments in get_segments(ansible_facts, lower=lower):
+    for segments in get_segments(ansible_facts, format=format):
         last_name, last_value = segments[-1]
         
         if (
@@ -274,7 +314,12 @@ def os_map_resolve(ansible_facts: TAnsibleFacts, map: Mapping):
         
     raise OSResolveError("Failed to resolve os value from mapping", tried)
 
-def os_file_resolve(ansible_facts, base_dir, exts, lower=True):
+def os_file_resolve(
+    ansible_facts,
+    base_dir,
+    exts,
+    format: Optional[Callable[[str], str]]= path_format_fact,
+):
     '''Resolve a file using Ansible os facts, starting at a base directory.
     
     Useful (and used!) for resolving tasks, templates... whatever.
@@ -348,7 +393,7 @@ def os_file_resolve(ansible_facts, base_dir, exts, lower=True):
     tried = []
     exts_glob_str = '{' + ','.join(exts) + '}'
     
-    for key_path in iter_os_key_paths(ansible_facts, lower=lower):
+    for key_path in iter_os_key_paths(ansible_facts, format=format):
         bare_rel_path = os.path.join(*key_path)
         
         for ext in exts:
