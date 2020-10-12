@@ -224,6 +224,9 @@ def flatten(itr: Iterable, skip=(str, bytes), into=tuple):
     '''
     return into(iter_flat(itr, skip))
 
+def filtered(fn, itr):
+    return list(filter(fn, itr))
+
 if __name__ == '__main__':
     import doctest
     doctest.testmod()

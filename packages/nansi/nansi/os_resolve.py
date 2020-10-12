@@ -3,7 +3,7 @@ import re
 import os
 import logging
 
-from nansi.utils.collections import dig, flatten
+from nansi.utils.collections import dig, flatten, filtered
 
 TAnsibleFacts = Mapping[str, Any]
 
@@ -73,7 +73,7 @@ def get_fact(
     if key not in ansible_facts:
         raise KeyError(
             f"Required `ansible_facts` key `{key}` is " +
-            "missing. Maybe `gather_facts` is subsetted?"
+            "missing. Should check with `has_fact()` first."
         )
     fact = ansible_facts[key]
     if not isinstance(fact, str):
@@ -107,20 +107,24 @@ def get_segments(
     if log.isEnabledFor(logging.DEBUG):
         print_facts(ansible_facts, format=format)
     
-    # Returns a list...
-    return [
-        # ...of lists...
-        [
-            # ...of (name, fact) tuples!
-            (name, get_fact(ansible_facts, name, format=format))
-            # where each name comes from a "name list"
-            for name in name_list
-            # if we have the fact (Windows at least has some differences)
-            if has_fact(ansible_facts, name)
-        # and each name list is an entry in RESOLVE_ORDER
-        ] for name_list
-        in RESOLVE_ORDER
-    ]
+    # Return a list...
+    return filtered(
+        # ...of non-empty...
+        lambda lst: len(lst) > 0,
+        # ...lists...
+        (
+            [
+                # ...of (name, fact) tuples!
+                (name, get_fact(ansible_facts, name, format=format))
+                # where each name comes from a "name list"
+                for name in name_list
+                # if we have the fact (Windows at least has some differences)
+                if has_fact(ansible_facts, name)
+            # and each name list is an entry in RESOLVE_ORDER
+            ] for name_list
+            in RESOLVE_ORDER
+        )
+    )
 
 def iter_os_key_paths(
     ansible_facts,
@@ -200,8 +204,15 @@ def iter_os_key_paths(
     ('system', 'win32nt')
     ('any',)
     '''
+    segments_list = get_segments(ansible_facts, format=format)
     
-    for segments in get_segments(ansible_facts, format=format):
+    if len(segments_list) == 0:
+        raise KeyError(
+            f"Did not find *any* os facts in `ansible_facts`, " +
+            "maybe `gather_facts` is disabled?"
+        )
+    
+    for segments in segments_list:
         last_name, last_value = segments[-1]
         
         if (
