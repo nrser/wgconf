@@ -201,8 +201,28 @@ def dig(target: Mapping, *key_path: Sequence):
             return None
     return target
 
-def flatten(seq):
-    return tuple(itertools.chain(*seq))
+def iter_flat(itr: Iterable, skip=(str, bytes)):
+    for entry in itr:
+        if (not isinstance(entry, Iterable)) or isinstance(entry, skip):
+            yield entry
+        else:
+            yield from iter_flat(entry)
+
+def flatten(itr: Iterable, skip=(str, bytes), into=tuple):
+    '''
+    >>> flatten(['abc', '123'])
+    ('abc', '123')
+    
+    >>> flatten(['abc', ['123', 'ddd']])
+    ('abc', '123', 'ddd')
+    
+    >>> flatten([1, [2, [3, [4, [5]]]]], into=list)
+    [1, 2, 3, 4, 5]
+    
+    >>> flatten([{'a': 1, 'b': 2}, 'c', 3])
+    ('a', 'b', 'c', 3)
+    '''
+    return into(iter_flat(itr, skip))
 
 if __name__ == '__main__':
     import doctest
