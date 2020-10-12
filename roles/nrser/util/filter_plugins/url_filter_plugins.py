@@ -1,5 +1,7 @@
 from typing import *
 import urllib.parse
+
+from nansi.utils.collections import flatten
     
 def to_url(frags) -> str:
     '''It's just `urllib.parse.urljoin()`. Don't use `join()`, it gets weird if
@@ -14,7 +16,7 @@ def to_url(frags) -> str:
     'http://example.com/a/b/c'
     
     '''
-    return urllib.parse.urljoin(*frags)
+    return urllib.parse.urljoin(*flatten(frags))
 
 class FilterModule:
     def filters(self):
