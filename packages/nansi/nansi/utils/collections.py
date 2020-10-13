@@ -227,6 +227,14 @@ def flatten(itr: Iterable, skip=(str, bytes), into=tuple):
 def filtered(fn, itr):
     return list(filter(fn, itr))
 
+def smells_like_namedtuple(obj):
+    # NOTE  `namedtuple` is nasty under there. Zen for thee, meta-spaghetti for
+    #       me..?
+    return (
+        isinstance(obj, tuple)
+        and hasattr(type(obj), '_fields')
+    )
+
 if __name__ == '__main__':
     import doctest
     doctest.testmod()
