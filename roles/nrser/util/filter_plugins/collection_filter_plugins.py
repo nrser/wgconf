@@ -2,7 +2,7 @@ from typing import *
 import logging
 
 import nansi.utils.collections
-from nansi.utils.collections import TKey, TValue, find
+from nansi.utils.collections import TKey, TValue, find, smells_like_namedtuple
 
 TDefaultKey     = TypeVar('TDefaultKey')
 TDefaultValue   = TypeVar('TDefaultValue')
@@ -162,16 +162,57 @@ def has_all(obj, *args, **kwds):
         return _object_has_all(obj, *args, **kwds)
 
 def get(obj, name, *rest):
+    '''
+    >>> get(['a', 'b', 'c'], 0)
+    'a'
+    
+    >>> get([], 0)
+    Traceback (most recent call last):
+        ...
+    IndexError: list index out of range
+    
+    >>> get([], 0, 'not found')
+    'not found'
+    
+    >>> get({'x': 1, 'y': 2}, 'x')
+    1
+    
+    >>> get({'x': 1, 'y': 2}, 'z')
+    Traceback (most recent call last):
+        ...
+    KeyError: 'z'
+    
+    >>> get({'x': 1, 'y': 2}, 'z', 'not found')
+    'not found'
+    
+    >>> Point = namedtuple('Point', 'x y')
+    
+    >>> get(Point(x=1, y=2), 'x')
+    1
+    
+    >>> get(Point(x=1, y=2), 'z')
+    Traceback (most recent call last):
+        ...
+    AttributeError: 'Point' object has no attribute 'z'
+    
+    >>> get(Point(x=1, y=2), 'z', 'not found')
+    'not found'
+    '''
     len_rest = len(rest)
     if len_rest > 1:
         raise TypeError(
-            f"get() takes from 2 to 3 positional arguments but "
-            "{2+len(rest)} were given"
+            "get() takes from 2 to 3 positional arguments but "
+            f"{2+len(rest)} were given"
         )
-    if isinstance(obj, (Sequence, Mapping)):
-        if len_rest == 1:
-            return obj.get(name, rest[0])
-        return obj[name]
+    if (
+        smells_like_namedtuple(obj) and
+        not isinstance(name, (int, slice))
+    ):
+        return getattr(obj, name, *rest)
+    elif isinstance(obj, (Sequence, Mapping)):
+        if len_rest == 0 or name in obj:
+            return obj[name]
+        return rest[0]
     else:
         return getattr(obj, name, *rest)
 
@@ -243,6 +284,9 @@ class FilterModule:
 if __name__ == '__main__':
     import doctest
     from pathlib import Path
+    from collections import namedtuple
+    
     from nansi.utils.doctesting import template_for_filters
+    
     template = template_for_filters(FilterModule)
     doctest.testmod()
