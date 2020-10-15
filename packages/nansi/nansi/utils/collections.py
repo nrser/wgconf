@@ -181,7 +181,7 @@ def last(itr: Iterable[T]) -> Optional[T]:
 def pick(map: Mapping[K, V], keys: Container[K]) -> Dict[K, V]:
     return {key: value for key, value in map.items() if key in keys}
 
-def dig(target: Mapping, *key_path: Sequence):
+def dig(target: Union[Sequence, Mapping], *key_path: Sequence):
     '''Like Ruby - get the value at a key-path, or `None` if any keys in the
     path are missing.
     
@@ -192,10 +192,30 @@ def dig(target: Mapping, *key_path: Sequence):
     'V'
     >>> dig(d, 'A', 'C') is None
     True
+    
+    >>> dig(['a', 'b'], 0)
+    'a'
+    
+    >>> mixed = {'a': [{'x': 1}, {'y': [2, 3]}], 'b': {'c': [4, 5]}}
+    >>> dig(mixed, 'a', 0, 'x')
+    1
+    >>> dig(mixed, 'a', 1, 'y', 0)
+    2
+    >>> dig(mixed, 'a', 1, 'y', 1)
+    3
+    >>> dig(mixed, 'b', 'c', 0)
+    4
+    >>> dig(mixed, 'b', 'c', 1)
+    5
     '''
     
     for key in key_path:
-        if key in target:
+        if isinstance(target, Sequence):
+            if isinstance(key, int) and key >= 0 and key < len(target):
+                target = target[key]
+            else:
+                return None
+        elif key in target:
             target = target[key]
         else:
             return None
