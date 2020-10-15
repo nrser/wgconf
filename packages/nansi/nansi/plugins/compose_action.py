@@ -13,7 +13,6 @@ from nansi.logging.test import test_logger
 from nansi.template.var_values import VarValues
 
 LOG = log = logging.getLogger(__name__)
-D = Display()
 
 class ComposedActionFailedError(RuntimeError): #(AnsibleError):
     def __init__(self, msg, name, action, result):
@@ -110,8 +109,10 @@ class Tasks:
     
     def __getattr__(self, task_name: str) -> TaskRunner:
         return TaskRunner(self.__compose_action, task_name)
+    
+    __getitem__ = __getattr__
 
-class ComposeAction(ActionBase):    
+class ComposeAction(ActionBase):
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
         
