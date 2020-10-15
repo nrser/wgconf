@@ -1,17 +1,17 @@
 coturn_state: present
 
-coturn_os_config_paths:
+coturn_config_paths_os_map:
   distribution:
     ubuntu: /etc/default/coturn
 
-coturn_config_path: "{{ lookup('os_map_resolve', coturn_os_config_paths) }}"
+coturn_config_path: "{{ lookup('os_dig', coturn_config_paths_os_map) }}"
 
 coturn_server_name: "{{ inventory_hostname }}"
 coturn_realm: "{{ coturn_server_name }}"
 
-coturn_os_turnserver_conf_paths:
+coturn_turnserver_conf_path_os_map:
   distribution:
     ubuntu: /etc/turnserver.conf
 
 coturn_turnserver_conf_path: >-
-  {{ lookup('os_map_resolve', coturn_os_turnserver_conf_paths) }}
+  {{ lookup('os_dig', coturn_turnserver_conf_path_os_map) }}
