@@ -5,6 +5,6 @@
         darwin: mac
 
 - set_fact:
-    result: "{{ lookup('os_map_resolve', my_map) }}"
+    result: "{{ lookup('os_dig', my_map) }}"
 
 - debug: var=result
