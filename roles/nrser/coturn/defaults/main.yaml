@@ -15,3 +15,6 @@ coturn_turnserver_conf_path_os_map:
 
 coturn_turnserver_conf_path: >-
   {{ lookup('os_dig', coturn_turnserver_conf_path_os_map) }}
+
+coturn_port: 3478
+coturn_tls_port: 5349

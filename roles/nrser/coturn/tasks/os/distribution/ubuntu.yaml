@@ -1,8 +1,5 @@
 # https://ourcodeworld.com/articles/read/1175/how-to-create-and-configure-your-own-stun-turn-server-with-coturn-in-ubuntu-18-04
 
-- debug: var=coturn_config_path
-- debug: var=coturn_turnserver_conf_path
-
 # - name: >-
 #     Manage {{ 'coturn'|f }} via apt
 #   apt:
@@ -24,3 +21,4 @@
     src: "{{ role_path }}/templates/turnserver.conf"
     dest: "{{ coturn_turnserver_conf_path }}"
     backup: yes
+  notify: coturn_restart
