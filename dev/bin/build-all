@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+
+# Kept as quick notes of the commands really, I haven't been building much
+
+cd ./packages/nansi && python setup.py sdist bdist_wheel
+cd ./packages/wgconf && python setup.py sdist bdist_wheel
