@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="wgconf",
-    version="0.0.1",
+    version="0.0.2-dev",
     author="NRSER",
     author_email="neil@nrser.com",
     description="Create and manage WireGuard config files",

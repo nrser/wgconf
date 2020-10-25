@@ -218,7 +218,7 @@ _wg_cfg_defaults:
 # `wgconf` Python Package
 # ----------------------------------------------------------------------------
 
-_wg_cfg_pkg_version: 0.0.1
+_wg_cfg_pkg_version: 0.0.2.dev0
 _wg_cfg_pkg_filename: >-
   wgconf-{{ _wg_cfg_pkg_version }}-py3-none-any.whl
 _wg_cfg_pkg_src: >-

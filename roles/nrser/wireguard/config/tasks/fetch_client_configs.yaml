@@ -8,6 +8,7 @@
 - name: Distribute file via Keybase
   when: >-
     _wg_cfg_cc_owner is not none
+    and admins is defined
     and admins | find_by(name=_wg_cfg_cc_owner)
     and 'keybase' in (admins | find_by(name=_wg_cfg_cc_owner))
   become: false

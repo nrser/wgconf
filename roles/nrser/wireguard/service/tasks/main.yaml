@@ -27,7 +27,6 @@
     line: "{{ wg_srv_state == 'stopped' | ternary('#', '') }}{{ item }}"
     regexp: >-
       [\\#\s]*{{ item }}
-    # Expect the line to be there, commented/un-commented
-    create: false
+    create: true
   notify:
     - restart_ufw

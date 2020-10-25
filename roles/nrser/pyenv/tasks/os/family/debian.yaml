@@ -36,7 +36,7 @@
 - name: >-
     Add env var exports to {{ '~/.bashrc' | f }}
   blockinfile:
-    dest: "{{ ansible_env.HOME }}/.bashrc"
+    dest: "{{ ansible_facts.env.HOME }}/.bashrc"
     block: |
       # pyenv config
       export PYENV_ROOT="{{ pyenv_root }}"

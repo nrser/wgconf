@@ -2,9 +2,9 @@ tf_version: 0.12.24
 
 tf_bin_dir: >-
   {{
-    (ansible_env.USER == 'root')
+    (ansible_facts.env.USER == 'root')
     | ternary(
         '/usr/local/bin',
-        (ansible_env.HOME, 'bin') | path
+        (ansible_facts.env.HOME, 'bin') | path
       )
   }}
