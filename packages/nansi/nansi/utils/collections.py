@@ -192,6 +192,8 @@ def dig(target: Union[Sequence, Mapping], *key_path: Sequence):
     'V'
     >>> dig(d, 'A', 'C') is None
     True
+    >>> dig(d)
+    {'A': {'B': 'V'}}
     
     >>> dig(['a', 'b'], 0)
     'a'
@@ -245,6 +247,10 @@ def flatten(itr: Iterable, skip=(str, bytes), into=tuple):
     return into(iter_flat(itr, skip))
 
 def filtered(fn, itr):
+    '''
+    >>> filtered(lambda x: x % 2 == 0, range(1, 10))
+    [2, 4, 6, 8]
+    '''
     return list(filter(fn, itr))
 
 def smells_like_namedtuple(obj):
@@ -254,6 +260,24 @@ def smells_like_namedtuple(obj):
         isinstance(obj, tuple)
         and hasattr(type(obj), '_fields')
     )
+
+def only(collection: Collection[TItem]) -> TItem:
+    '''Stupid, but surprisingly useful: you have an iterable that should only
+    have one element, and you want that element, or to know if you were wrong
+    for some reason.
+    
+    >>> only([1])
+    1
+    
+    >>> only([1, 2])
+    Traceback (most recent call last):
+        ...
+    AssertionError: Excpected collection to have only one element, found [1, 2]
+    '''
+    assert len(collection) == 1, (
+        f"Excpected collection to have only one element, found {collection}"
+    )
+    return first(collection)
 
 if __name__ == '__main__':
     import doctest
