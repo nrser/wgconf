@@ -25,7 +25,7 @@ def setup_for_display():
     
     handler = get_handler()
     if handler not in pkg_logger.handlers:
-        pkg_logger.addHandler(get_handler())
+        pkg_logger.addHandler(handler)
 
 def get_plugin_logger(file_path):
     setup_for_display()
