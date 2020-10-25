@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+
+cd ./packages/wgconf && python setup.py sdist bdist_wheel
