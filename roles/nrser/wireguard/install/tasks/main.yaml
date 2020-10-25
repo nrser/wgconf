@@ -1,0 +1,12 @@
+- name: Add wireguard/wireguard apt repo
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+  apt_repository:
+    repo: ppa:wireguard/wireguard
+    update_cache: true
+    
+- name: Install wireguard
+  apt:
+    name: wireguard
+    update_cache: true
+    cache_valid_time: "{{ apt_cache_valid_time }}"

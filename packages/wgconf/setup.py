@@ -4,7 +4,7 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="wireguard-config",
+    name="wgconf",
     version="0.0.1",
     author="NRSER",
     author_email="neil@nrser.com",

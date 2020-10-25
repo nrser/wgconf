@@ -1,0 +1,4 @@
+- name: wg_cfg_restart
+  service:
+    name: "wg-quick@{{ wg_cfg_name }}"
+    state: restarted
