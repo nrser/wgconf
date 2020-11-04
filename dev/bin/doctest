@@ -5,8 +5,11 @@ from glob import glob as _glob
 from pathlib import Path
 import re
 from subprocess import call, run
+import os
 
 from rich.console import Console
+from rich.panel import Panel
+from rich.padding import Padding
 
 C = Console()
 
@@ -28,7 +31,7 @@ def is_doctest(path):
     with open(path, 'r') as f:
         for line in f:
             # if re.match(r'\s*\>\>\>', line):
-            if re.match(r'\s*doctest\.testmod\(\)', line):
+            if re.match(r'\s*doctest(?:ing)?\.testmod\(.*\)', line):
                 return True
     return False
 
@@ -53,13 +56,19 @@ def plugins():
         if is_doctest(path)
     ]
 
+def env():
+    return {**os.environ, "DOCTESTING": "yup"}
+
 def test(name, cmd):
-    r = run(cmd, capture_output=True, encoding='utf8')
-    if len(r.stdout) == 0:
+    r = run(cmd, capture_output=True, encoding='utf8', env=env())
+    if r.returncode == 0 and len(r.stdout) == 0:
         C.print(":white_check_mark:", name)
         return True
     else:
-        C.print(r.stdout)
+        if r.stdout:
+            C.print(Panel(Padding(r.stdout, 1), title=f"STDOUT {name}"))
+        if r.stderr:
+            C.print(Panel(Padding(r.stderr, 1), title=f"STDERR {name}"))
         C.print(":x:", name)
         return False
 
@@ -67,7 +76,7 @@ def test_module(module):
     return test(module, ['python', '-m', module])
 
 def test_file(path):
-    return test(rel(path), ['python', path])
+    return test(rel(path), ['python', '-m', 'doctest', path])
 
 def is_nansi_module(path):
     try:
@@ -76,14 +85,19 @@ def is_nansi_module(path):
         return False
     return True
 
+ok = True
+
 if len(ARGS) == 0:
     for module, path in nansi_modules():
-        test_module(module)
+        ok = ok and test_module(module)
     for path in plugins():
-        test_file(path)
+        ok = ok and test_file(path)
 else:
     for arg in ARGS:
         if is_nansi_module(arg):
-            test_module(module_for(arg))
+            ok = ok and test_module(module_for(arg))
         else:
-            test_file(arg)
+            ok = ok and test_file(arg)
+
+if not ok:
+    sys.exit(1)

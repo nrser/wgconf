@@ -253,6 +253,20 @@ def filtered(fn, itr):
     '''
     return list(filter(fn, itr))
 
+def flat_map(
+    fn: Callable[[TItem], TResult],
+    itr, # : Iterable[T], Not right, can we even *do* recursive types?!?
+    /,
+    skip: Tuple[type] = (str, bytes),
+) -> Iterable[TResult]: 
+    for item in iter_flat(itr):
+        result = fn(item)
+        if isinstance(result, Iterable) and not isinstance(result, skip):
+            yield from iter_flat(result)
+        else:
+            yield result
+        
+
 def smells_like_namedtuple(obj):
     # NOTE  `namedtuple` is nasty under there. Zen for thee, meta-spaghetti for
     #       me..?

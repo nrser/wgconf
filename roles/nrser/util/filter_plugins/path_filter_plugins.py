@@ -47,8 +47,5 @@ class FilterModule:
             rel             = nansi.utils.path.rel,
         )
 
-if __name__ == '__main__':
-    import doctest
-    from nansi.utils.doctesting import template_for_filters
-    template = template_for_filters(FilterModule)
-    doctest.testmod()
+from nansi.utils import doctesting
+doctesting.testmod(__name__)

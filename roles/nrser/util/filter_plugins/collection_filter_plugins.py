@@ -1,5 +1,6 @@
 from typing import *
 import logging
+import sys
 
 import nansi.utils.collections
 from nansi.utils.collections import TKey, TValue, find, smells_like_namedtuple
@@ -281,12 +282,12 @@ class FilterModule:
             get             = get,
         )
 
-if __name__ == '__main__':
-    import doctest
+def _doctest_setup_():
     from pathlib import Path
     from collections import namedtuple
-    
-    from nansi.utils.doctesting import template_for_filters
-    
-    template = template_for_filters(FilterModule)
-    doctest.testmod()
+    mod = sys.modules[__name__]
+    setattr(mod, 'Path', Path)
+    setattr(mod, 'namedtuple', namedtuple)
+
+from nansi.utils import doctesting
+doctesting.testmod(__name__)
