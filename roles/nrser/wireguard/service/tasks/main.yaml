@@ -24,7 +24,7 @@
     - net/ipv6/conf/all/forwarding=1
   lineinfile:
     dest: /etc/ufw/sysctl.conf
-    line: "{{ wg_srv_state == 'stopped' | ternary('#', '') }}{{ item }}"
+    line: "{{ (wg_srv_state == 'stopped') | ternary('#', '') }}{{ item }}"
     regexp: >-
       [\\#\s]*{{ item }}
     create: true
