@@ -2,7 +2,6 @@ import os
 import sys
 from tempfile import TemporaryDirectory
 from typing import *
-from contextlib import contextmanager
 
 from ansible.template import Templar
 from ansible.parsing.dataloader import DataLoader
