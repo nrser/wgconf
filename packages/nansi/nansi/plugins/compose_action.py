@@ -240,16 +240,17 @@ class ComposeAction(ActionBase):
 
     def run(self, tmp=None, task_vars=None):
         self.log.debug("Starting run()...")
-
+        
+        self._result = super().run(tmp, task_vars)
+        self._result["changed"] = False
+        # result["results"] = [] Now handled dynamically in `append_result`_
+        
         del tmp  # Some Ansible legacy shit I guess
         if task_vars is None:  # Hope not, not sure what that would mean..?
             task_vars = {}
 
         self._task_vars = task_vars
         self._var_values = VarValues(self._templar, task_vars)
-        self._result = super().run(tmp, task_vars)
-        self._result["changed"] = False
-        # result["results"] = [] Now handled dynamically in `append_result`_
 
         try:
             self.compose()
