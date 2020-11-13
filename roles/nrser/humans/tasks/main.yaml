@@ -18,7 +18,7 @@
 - name: >-
     Allow {{ humans_admin_group | f }} group to have password-less sudo
   lineinfile:
-    dest: /etc/sudoers
+    dest: "{{ humans_sudoers_path }}"
     state: present
     regexp: '^%{{ humans_admin_group }}'
     line: '%{{ humans_admin_group }} ALL=(ALL) NOPASSWD: ALL'
@@ -65,7 +65,7 @@
 # it's much more secure to use ssh keys
 - name: Disallow SSH password authentication
   lineinfile:
-    dest: /etc/ssh/sshd_config
+    dest: "{{ humans_sshd_config_path }}"
     regexp: "^\\#?PasswordAuthentication"
     line: PasswordAuthentication no
     state: present
@@ -74,7 +74,7 @@
 # turning off root ssh access is a security best practice
 - name: Disallow root SSH access
   lineinfile:
-    dest: /etc/ssh/sshd_config
+    dest: "{{ humans_sshd_config_path }}"
     regexp: "^PermitRootLogin"
     line: PermitRootLogin no
     state: present
@@ -83,7 +83,7 @@
 - name: >-
     **ONLY** allow SSH login for humans group {{ humans_group | f }}
   lineinfile:
-    dest: /etc/ssh/sshd_config
+    dest: "{{ humans_sshd_config_path }}"
     regexp: "^\\#?AllowGroups"
     line: "AllowGroups {{ humans_group }}"
     state: present
@@ -92,5 +92,5 @@
 - with_items: "{{ humans }}"
   loop_control:
     loop_var: user
-  when: "'git' in user"
+  when: "humans_git and 'git' in user"
   include_tasks: "{{ role_path }}/tasks/_git_config.yaml"
