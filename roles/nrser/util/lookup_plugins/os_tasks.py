@@ -10,7 +10,7 @@ DOCUMENTATION = """
     description:
         - >-
             Iterates over combinations of
-            
+
             1.  `ansible_facts.distribution`
                 1.  `ansible_facts.distribution_version`
                 2.  `ansible_facts.distribution_release`
@@ -18,7 +18,7 @@ DOCUMENTATION = """
             3.  `ansible_facts.system`
                 1.  `ansible_facts.kernel`
 
-            "depth-first" from (1), indented to generally be most specific to 
+            "depth-first" from (1), indented to generally be most specific to
             least.
 
         - >-
@@ -32,9 +32,9 @@ DOCUMENTATION = """
             ansible_facts.system: Linux
             ansible_facts.kernel: 4.15.0-106-generic
             ```
-            
+
             The path search order will be:
-            
+
             1.  $DIR/distribution/ubuntu/version/18.04.yaml
             2.  $DIR/distribution/ubuntu/version/18.yaml
             3.  $DIR/distribution/ubuntu/release/bionic.yaml
@@ -45,14 +45,14 @@ DOCUMENTATION = """
             8.  $DIR/system/linux/kernel/4.yaml
             9.  $DIR/system/linux.yaml
             10. $DIR/any.yaml
-            
+
             `.yml` extension is supported as well, but `.yaml` takes priority.
-            
+
         - >-
             macOS looks a bit weirder, as the process was designed with Linux in
             mind, but should still work fine due to there only being one major
             distribution (at this time, at least).
-            
+
             Assuming:
 
             ```YAML
@@ -91,6 +91,8 @@ DOCUMENTATION = """
         required: True
 """
 
+# pylint: disable=wrong-import-position
+
 import os
 from functools import reduce
 import re
@@ -111,7 +113,7 @@ nansi_log = logging.getLogger('nansi')
 nansi_log.setLevel(logging.DEBUG)
 nansi_log.addHandler(DisplayHandler(display))
 
-'''Task file extensions we look for, in order.'''
+# Task file extensions we look for, in order.
 TASK_FILE_EXTS = ('yaml', 'yml')
 
 TITLE = f"[os_tasks] Lookup Plugin"
@@ -125,35 +127,35 @@ def display_error(error, ansible_facts, base_dir):
     for path in error.tried:
         display.error(f"  {path}")
 
-class LookupModule(LookupBase):    
+class LookupModule(LookupBase):
 
     def run(self, terms, variables: Optional[Dict[str, Any]]=None, **kwargs):
         display.vv(TITLE)
         display.vv(f"  @see {__file__}")
-        
+
         if variables is None:
             raise AnsibleError("Received `variables=None`")
-        
+
         if (ansible_facts := variables.get('ansible_facts')) is None:
             raise AnsibleError(
                 "Required `ansible_facts` variable is missing, " +
                 "maybe `gather_facts` is false?"
             )
-        
+
         if len(terms) != 1:
             raise AnsibleError(
                 "Must give exactly one arg (base directory for resolution), " +
                 f"given {terms}"
             )
-        
+
         base_dir = terms[0]
-        
+
         if not os.path.exists(base_dir):
             raise AnsibleError(f"Base directory does not exist: {base_dir}")
-        
+
         if not os.path.isdir(base_dir):
             raise AnsibleError(f"Base directory is not a directory: {base_dir}")
-        
+
         try:
             path = os_file_resolve(
                 variables.get('ansible_facts'),
@@ -165,5 +167,5 @@ class LookupModule(LookupBase):
         except OSResolveError as error:
             display_error(error, ansible_facts, base_dir)
             raise AnsibleError(error.message)
-        
+
         return [path]
