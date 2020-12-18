@@ -1,0 +1,9 @@
+- name: Check Nginx config before restart
+  command:
+    argv: ["{{ nginx_exe }}", "-t"]
+  changed_when: false
+
+- name: Restart Nginx service
+  service:
+    name: nginx
+    state: restarted

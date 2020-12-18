@@ -9,6 +9,8 @@ nginx_user: www-data
 
 nginx_exe: /usr/sbin/nginx
 
+nginx_site_root: /var/www/html
+
 nginx_proxy_websockets: no
 nginx_lets_encrypt: no
 
@@ -21,7 +23,6 @@ nginx_package_state: present
 nginx_dhparam: yes
 
 nginx_config: yes
-nginx_config_validate: "{{ nginx_exe }} -t -c %s"
 
 nginx_service: yes
 
