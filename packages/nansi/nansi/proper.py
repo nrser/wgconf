@@ -1,6 +1,6 @@
-'''
+"""
 Typed properties, with optional defaults and cast functions.
-'''
+"""
 
 # pylint: disable=redefined-builtin,invalid-name,redefined-outer-name
 
@@ -15,6 +15,7 @@ from nansi.utils.collections import need
 
 LOG = log = logging.getLogger(__name__)
 
+
 class PropTypeError(TypeError):
     def __init__(self, message, instance, name, type, value, context=None):
         super().__init__(message)
@@ -24,6 +25,7 @@ class PropTypeError(TypeError):
         self.value = value
         self.context = context
 
+
 class PropInitError(ValueError):
     def __init__(self, message, instance, name, value):
         super().__init__(message)
@@ -31,7 +33,18 @@ class PropInitError(ValueError):
         self.name = name
         self.value = value
 
+
 class prop(property):
+    '''
+    Extension of the built-in `property` that adds support for:
+
+    1.  Typed values which are runtime checked during set.
+    2.  Default values and callables that produce them.
+    3.  Cast callables that convert values during set.
+
+    Designed to be used with classes extending `Proper`.
+    '''
+
     def __init__(self, type, default=None, cast=None):
         super().__init__(self._get, self._set)
 
@@ -47,7 +60,7 @@ class prop(property):
 
     def _names(self, instance) -> str:
         name = self._name(instance)
-        return (name, '_' + name)
+        return (name, "_" + name)
 
     def _check_type(self, instance, name, value, context, message):
         try:
@@ -57,8 +70,12 @@ class prop(property):
                 message = message()
             # pylint: disable=raise-missing-from
             raise PropTypeError(
-                message, instance=instance, name=name, type=self.type,
-                value=value, context=context,
+                message,
+                instance=instance,
+                name=name,
+                type=self.type,
+                value=value,
+                context=context,
             )
 
     def _get_default(self, instance):
@@ -81,8 +98,8 @@ class prop(property):
             # pylint: disable=broad-except
             except Exception:
                 log.error(
-                    f"prop {self.__str__(instance)} raised casting value " +
-                    repr(value),
+                    f"prop {self.__str__(instance)} raised casting value "
+                    + repr(value),
                     exc_info=exc_info(),
                 )
         return value
@@ -97,11 +114,17 @@ class prop(property):
         else:
             value = self._get_default(instance)
 
-        self._check_type(instance, name, value, 'get', lambda: (
-            f"Uh-oh! {'Default' if is_default else 'Stored'} value for prop " +
-            f"{name} on {instance} is not typing {self.type}, got a " +
-            f"{type(value)}: {repr(value)}"
-        ))
+        self._check_type(
+            instance,
+            name,
+            value,
+            "get",
+            lambda: (
+                f"Uh-oh! {'Default' if is_default else 'Stored'} value for prop "
+                + f"{name} on {instance} is not typing {self.type}, got a "
+                + f"{type(value)}: {repr(value)}"
+            ),
+        )
 
         return value
 
@@ -110,10 +133,16 @@ class prop(property):
 
         value = self._try_cast(value)
 
-        self._check_type(instance, name, value, 'set', lambda: (
-            f"{instance.__class__.__name__}#{name} must be of typing " +
-            f"{self.type}, given a {type(value)}: {repr(value)}"
-        ))
+        self._check_type(
+            instance,
+            name,
+            value,
+            "set",
+            lambda: (
+                f"{instance.__class__.__name__}#{name} must be of typing "
+                + f"{self.type}, given a {type(value)}: {repr(value)}"
+            ),
+        )
 
         setattr(instance, attr_name, value)
 
@@ -123,6 +152,31 @@ class prop(property):
         else:
             return f"{instance.__class__}.{self._name(instance)}: {self.type}"
 
+    @classmethod
+    def one_or_more(cls, item_type, default=None, item_cast=None):
+        def cast(value):
+            if not isinstance(value, list):
+                value = [value]
+            if item_cast is None:
+                return value
+            return [item_cast(item) for item in value]
+
+        return cls(List[item_type], default=default, cast=cast)
+
+    @classmethod
+    def zero_or_more(cls, item_type, default=list, item_cast=None):
+        def cast(value):
+            if value is None:
+                return []
+            if not isinstance(value, list):
+                value = [value]
+            if item_cast is None:
+                return value
+            return [item_cast(item) for item in value]
+
+        return cls(List[item_type], default=default, cast=cast)
+
+
 class Proper:
     @classmethod
     def is_prop(cls, name) -> bool:
@@ -131,10 +185,7 @@ class Proper:
     @classmethod
     def props(cls) -> Dict[str, prop]:
         return {
-            name: getattr(cls, name)
-            for name
-            in dir(cls)
-            if cls.is_prop(name)
+            name: getattr(cls, name) for name in dir(cls) if cls.is_prop(name)
         }
 
     def __init__(self, **values):
@@ -143,7 +194,9 @@ class Proper:
             if name not in props:
                 raise PropInitError(
                     f"No property {name} on {self.__class__.__name__}",
-                    instance=self, name=name, value=value
+                    instance=self,
+                    name=name,
+                    value=value,
                 )
             props[name]._set(self, value)
             del props[name]
@@ -151,12 +204,15 @@ class Proper:
         for name, p in props.items():
             if p._test_default(self) is False:
                 raise PropInitError(
-                    f"No value provided for prop `{name}` on " +
-                    f"{self.__class__.__name__}, and default value " +
-                    f"{ repr(p._get_default(self)) } does not satisfy " +
-                    f"prop typing {p.type}",
-                    instance=self, name=name, value=None
+                    f"No value provided for prop `{name}` on "
+                    + f"{self.__class__.__name__}, and default value "
+                    + f"{ repr(p._get_default(self)) } does not satisfy "
+                    + f"prop typing {p.type}",
+                    instance=self,
+                    name=name,
+                    value=None,
                 )
 
     def is_prop_set(self, name: str) -> bool:
-        return hasattr(self, '_' + name)
+        return hasattr(self, "_" + name)
+
