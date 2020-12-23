@@ -13,6 +13,7 @@ from ansible.errors import AnsibleError
 from nansi.plugins.compose_action import ComposeAction
 from nansi.proper import Proper, prop
 from nansi.utils.strings import connect
+from nansi.support.systemd import file_content_for
 
 GO_ARCH_MAP = {
     "i386": "386",
@@ -181,19 +182,7 @@ class Release(Proper):
 
     @property
     def systemd_content(self) -> str:
-        lines = []
-
-        for section_name, section_opts in self.systemd_data.items():
-            lines.append(f"[{section_name}]")
-            for name, value in section_opts.items():
-                if isinstance(value, list):
-                    for item in value:
-                        lines.append(f"{name}={item}")
-                else:
-                    lines.append(f"{name}={value}")
-            lines.append('')
-
-        return "\n".join(lines)
+        return file_content_for(self.systemd_data)
 
 class ActionModule(ComposeAction):
 
