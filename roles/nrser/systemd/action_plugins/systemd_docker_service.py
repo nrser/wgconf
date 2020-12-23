@@ -2,13 +2,8 @@
 
 from __future__ import annotations
 from typing import *
-from os.path import basename, isabs, join
-from urllib.parse import urlparse
-from operator import attrgetter
 import logging
 import shlex
-
-from ansible.errors import AnsibleError
 
 from nansi.plugins.compose_action import ComposeAction
 from nansi.proper import Proper, prop
@@ -20,9 +15,9 @@ LOG = logging.getLogger(__name__)
 
 class SystemdDockerService(Proper):
 
-    docker_filename = prop(str, "docker.service")
-    docker_exe          = prop(str, "/usr/bin/docker")
-    service_unit_dir    = prop(str, "/etc/systemd/system")
+    docker_service  = prop(str, "docker.service")
+    docker_exe      = prop(str, "/usr/bin/docker")
+    file_dir        = prop(str, "/etc/systemd/system")
 
     state           = prop(Literal['present', 'absent'], 'present')
     name            = prop(str)
@@ -56,8 +51,8 @@ class SystemdDockerService(Proper):
         return {
             "Unit": {
                 "Description": self.description,
-                "After": self.docker_filename,
-                "Requires": self.docker_filename,
+                "After": self.docker_service,
+                "Requires": self.docker_service,
             },
             "Service": {
                 "ExecStartPre": [
@@ -84,7 +79,7 @@ class SystemdDockerService(Proper):
 
     @property
     def file_path(self) -> str:
-        return connect(self.service_unit_dir, self.filename)
+        return connect(self.file_dir, self.filename)
 
 class ActionModule(ComposeAction):
 
