@@ -97,7 +97,7 @@ class ActionModule(ComposeAction):
             'status': self.result_status(result),
         })
 
-    def present(self, service: SystemdDockerService):
+    def state_present(self, service: SystemdDockerService):
         unit_file = self.tasks.copy(
             dest    = service.file_path,
             content = service.file_content,
@@ -111,7 +111,7 @@ class ActionModule(ComposeAction):
             daemon_reload   = unit_file.get("changed", False),
         )
 
-    def absent(self, service: SystemdDockerService):
+    def state_absent(self, service: SystemdDockerService):
         self.tasks.systemd(
             name        = service.filename,
             state       = 'stopped',
@@ -129,12 +129,4 @@ class ActionModule(ComposeAction):
 
     def compose(self):
         service = SystemdDockerService(**self._task.args)
-
-        if service.state == 'present':
-            self.present(service)
-        elif service.state == 'absent':
-            self.absent(service)
-        else:
-            raise AnsibleError(
-                f"WTF `state` is this? {repr(service.state)}"
-            )
+        getattr(self, f"state_{service.state}")(service)
