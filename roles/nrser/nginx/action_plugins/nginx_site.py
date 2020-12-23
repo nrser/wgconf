@@ -112,6 +112,7 @@ class NginxSite(Proper):
     proxy_websockets    = prop( bool,
                                 from_var('nginx_proxy_websockets') )
 
+    # pylint: disable=redefined-builtin
     def __init__(self, args, vars):
         self.vars = vars
         super().__init__(**args)
