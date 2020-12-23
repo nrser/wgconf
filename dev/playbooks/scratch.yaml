@@ -1,13 +1,12 @@
 ---
 - name: Temp minimao playbook
-  hosts: minimao
+  hosts: pixeldust
   gather_facts: no
   
   roles:
-    - role: scratch
+    - role: examples/action_plugin
   
   tasks:
-    - scratch:
-        name: Dawg
+    - sudo_task:
     
     
