@@ -104,8 +104,6 @@ class Tasks:
             path = 'some/path',
             state = 'absent',
         )
-
-    Attribute access returns `functools.partial( compose_action, name)`.
     """
 
     def __init__(self, compose_action: ComposeAction):
@@ -137,6 +135,13 @@ class ComposeAction(ActionBase):
     # Helper Methods
     # ========================================================================
 
+    def result_status(self, result):
+        if result.get('failed', False):
+            return 'FAILED'
+        if result.get('changed', False):
+            return 'CHANGED'
+        return 'OK'
+
     def append_result(self, task, action, result):
         if "results" not in self._result:
             self._result["results"] = []
@@ -151,11 +156,11 @@ class ComposeAction(ActionBase):
         """
         Determins if something has "changed" given the result of a composed
         sub-task.
-        
+
         Default implementation simply propagates the sub-result's `"changed"`
         value.
-        
-        :returns: `bool`_ indicating if the composed sub-task has changed 
+
+        :returns: `bool`_ indicating if the composed sub-task has changed
         things.
         """
         return result.get("changed", False)
@@ -167,13 +172,14 @@ class ComposeAction(ActionBase):
         result: Dict,
     ) -> None:
         """What to do when a task succeeds. Default implementation:
-        
+
         1.  Calls `append_result`_ to add the `result` to a `'results'` list in
             the master `self._result`.
         2.  Calls `has_changed`_ and updates the `'changed'` value in
             `self._result` if needed.
         """
-        self.log.debug(f"Task {task.action} OK", result)
+        status = self.result_status(result)
+        self.log.debug(f"Task `{task.action}` {status}", result)
         self.append_result(task, action, result)
         if (
             self.has_changed(task, action, result)
@@ -194,7 +200,7 @@ class ComposeAction(ActionBase):
         The relevant `Task`_, `ActionBase`_ and `result` `dict`_ are provided
         to allow realizing subclasses to make specific decisions.
         """
-        self.log.error(f"Task {task.action} FAILED", result)
+        self.log.error(f"Task `{task.action}` FAILED", result)
 
         raise ComposedActionFailedError(
             result.get("msg", ""), task.action, action, result
@@ -240,11 +246,11 @@ class ComposeAction(ActionBase):
 
     def run(self, tmp=None, task_vars=None):
         self.log.debug("Starting run()...")
-        
+
         self._result = super().run(tmp, task_vars)
         self._result["changed"] = False
         # result["results"] = [] Now handled dynamically in `append_result`_
-        
+
         del tmp  # Some Ansible legacy shit I guess
         if task_vars is None:  # Hope not, not sure what that would mean..?
             task_vars = {}
@@ -255,8 +261,16 @@ class ComposeAction(ActionBase):
         try:
             self.compose()
         except AnsibleError as error:
+            self.log.debug(
+                f"AnsibleError during `{self.__class__.__name__}.compose`",
+                exc_info=True
+            )
             raise error
         except Exception as error:
+            self.log.debug(
+                f"NON-AnsibleError during `{self.__class__.__name__}.compose`",
+                exc_info=True
+            )
             # `AnsibleError(Exception)` sig is (types as best as I can infer):
             #
             #   __init__(
@@ -294,13 +308,14 @@ class ComposeAction(ActionBase):
         )
 
         if action is None:
-            # raise RuntimeError(f"Action {repr(name)} not found")
+            self.log.debug(f"Composing task `{name}`...", task_args)
             result = self._execute_module(
                 name,
                 module_args=task_args,
                 task_vars=task_vars,
             )
         else:
+            self.log.debug(f"Composing action `{name}`...", task_args)
             result = action.run(task_vars=task_vars)
 
         if result.get("failed", False):
@@ -309,3 +324,4 @@ class ComposeAction(ActionBase):
             self.handle_ok_result(task, action, result)
 
         return result
+
