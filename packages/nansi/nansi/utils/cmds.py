@@ -9,6 +9,7 @@ def iter_opts(
     *,
     long_style: Literal["=", " "] = " ",
     sort: bool = True,
+    subs: Optional[Mapping] = None,
 ):
     if opts is None:
         return
@@ -26,6 +27,8 @@ def iter_opts(
             flag = f"--{name}"
         if isinstance(value, list):
             for item in value:
+                if subs is not None and isinstance(item, str):
+                    item = item.format(**subs)
                 if is_short or long_style == " ":
                     yield flag
                     yield str(item)
@@ -35,6 +38,8 @@ def iter_opts(
             if value is True:
                 yield flag
         else:
+            if subs is not None and isinstance(value, str):
+                value = value.format(**subs)
             if is_short or long_style == " ":
                 yield flag
                 yield str(value)
