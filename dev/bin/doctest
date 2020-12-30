@@ -1,10 +1,11 @@
 #!/usr/bin/env python
+# pylint: disable=bare-except
 
 import sys
 from glob import glob as _glob
 from pathlib import Path
 import re
-from subprocess import call, run
+from subprocess import run
 import os
 
 from rich.console import Console
@@ -60,7 +61,7 @@ def env():
     return {**os.environ, "DOCTESTING": "yup"}
 
 def test(name, cmd):
-    r = run(cmd, capture_output=True, encoding='utf8', env=env())
+    r = run(cmd, capture_output=True, encoding='utf8', env=env(), check=False)
     if r.returncode == 0 and len(r.stdout) == 0:
         C.print(":white_check_mark:", name)
         return True
@@ -81,23 +82,28 @@ def test_file(path):
 def is_nansi_module(path):
     try:
         Path(path).relative_to(NANSI_ROOT / 'nansi')
-    except: 
+    except:
         return False
     return True
 
-ok = True
 
-if len(ARGS) == 0:
-    for module, path in nansi_modules():
-        ok = ok and test_module(module)
-    for path in plugins():
-        ok = ok and test_file(path)
-else:
-    for arg in ARGS:
-        if is_nansi_module(arg):
-            ok = ok and test_module(module_for(arg))
-        else:
-            ok = ok and test_file(arg)
+def main():
+    ok = True
 
-if not ok:
-    sys.exit(1)
+    if len(ARGS) == 0:
+        for module, path in nansi_modules():
+            ok = ok and test_module(module)
+        for path in plugins():
+            ok = ok and test_file(path)
+    else:
+        for arg in ARGS:
+            if is_nansi_module(arg):
+                ok = ok and test_module(module_for(arg))
+            else:
+                ok = ok and test_file(arg)
+
+    if not ok:
+        sys.exit(1)
+
+if __name__ == '__main__':
+    main()
