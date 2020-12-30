@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 
-# Only `wgconf` uses UnitTest (and doesn't use DocTest)
+python -m unittest discover --verbose ./packages/nansi/tests/
 python -m unittest discover --verbose ./packages/wgconf/tests/
