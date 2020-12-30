@@ -4,7 +4,7 @@ from __future__ import annotations
 from typing import *
 import logging
 import shlex
-from os.path import basename, isabs, abspath, join
+from os.path import basename, isabs, join
 
 from nansi.plugins.compose_action import ComposeAction
 from nansi.proper import Proper, prop, Improper
