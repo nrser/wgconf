@@ -20,7 +20,7 @@ from .line import (
     DefaultSectionHead,
 )
 
-DUP_TYPE = Literal['first', 'list']
+DUP_TYPE = Literal['first', 'list'] # pylint: disable=invalid-name
 DEFAULT_DUP = 'first'
 
 Meta = namedtuple('Meta', 'comment name value')
@@ -28,6 +28,7 @@ Meta = namedtuple('Meta', 'comment name value')
 def meta_for(comment: Comment) -> Optional[Meta]:
     if match := Option.REGEXP.fullmatch(comment.value):
         return Meta(comment, match.group(1), match.group(2))
+    return None
 
 def encode_value(value: PropValue) -> Optional[str]:
     if value is None or value == '':
@@ -43,6 +44,7 @@ def encode_value(value: PropValue) -> Optional[str]:
     return str(value)
 
 class Prop(property):
+    # pylint: disable=redefined-builtin
     def __init__(self, option_name, type, meta: bool = False):
         super().__init__(self._get, self._set, self._del)
 
@@ -195,6 +197,7 @@ class Section:
 
         comment_value = f"{name} = {string}"
 
+        # pylint: disable=too-many-function-args
         if meta := find(self.meta(), lambda m: m.name == name):
             meta.comment.value = comment_value
         else:
@@ -321,6 +324,7 @@ class Section:
                 option.remove()
 
             for string in strings:
+                # pylint: disable=unexpected-keyword-arg
                 insert_after.insert_next(Option(name=name, value=string))
                 insert_after = insert_after.next
 
@@ -331,6 +335,7 @@ class Section:
                 self.__delitem__(name)
                 return
 
+            # pylint: disable=unexpected-keyword-arg
             if option := find(self.options(), lambda opt: opt.name == name):
                 if option.value == string:
                     return
