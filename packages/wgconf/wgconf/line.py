@@ -3,7 +3,12 @@ from typing import *
 import re
 from dataclasses import dataclass
 
+# Pylint doesn't like `REGEXP` constant in dataclasses?
+# pylint: disable=invalid-name
+
 class Line:
+    REGEXP = None # For the linters in the crowd tonight!!
+
     prev: Optional[Line] = None
     next: Optional[Line] = None
 
@@ -12,17 +17,18 @@ class Line:
         self.next = None
 
     @classmethod
-    def from_string(self, string: str) -> Optional[Line]:
-        if match := self.match(string):
-            return self.from_match(match)
+    def from_string(cls, string: str) -> Optional[Line]:
+        if match := cls.match(string):
+            return cls.from_match(match)
+        return None
 
     @classmethod
-    def match(self, line: str) -> Optional[re.Match]:
-        return self.REGEXP.fullmatch(line)
+    def match(cls, line: str) -> Optional[re.Match]:
+        return cls.REGEXP.fullmatch(line)
 
     @classmethod
-    def from_match(self, match: re.Match) -> Line:
-        return self(*match.groups())
+    def from_match(cls, match: re.Match) -> Line:
+        return cls(*match.groups())
 
     def remove(self) ->  None:
         if self.prev is not None:
@@ -50,7 +56,7 @@ class Blank(Line):
     REGEXP = re.compile(r'\s*')
 
     @classmethod
-    def from_match(self, match: re.Match) -> Blank:
+    def from_match(cls, match: re.Match) -> Blank:
         return Blank()
 
     def __str__(self) -> str:
@@ -73,8 +79,9 @@ class OptBase(Line):
     value: str
 
     @classmethod
-    def from_match(self, match: re.Match) -> OptBase:
-        return self(name=match.group(1), value=match.group(2).rstrip())
+    def from_match(cls, match: re.Match) -> OptBase:
+        # pylint: disable=unexpected-keyword-arg
+        return cls(name=match.group(1), value=match.group(2).rstrip())
 
 @dataclass
 class Option(OptBase):
@@ -96,7 +103,7 @@ class SectionHead(Line):
 class DefaultSectionHead(Line):
 
     @classmethod
-    def match(self, line: str) -> Optional[re.Match]:
+    def match(cls, line: str) -> Optional[re.Match]:
         return None
 
     def remove(self) ->  None:
