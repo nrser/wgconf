@@ -112,6 +112,8 @@ class NginxSite(Proper):
     proxy_websockets    = prop( bool,
                                 from_var('nginx_proxy_websockets') )
 
+    client_max_body_size    = prop( str, '1m' )
+
     # pylint: disable=redefined-builtin
     def __init__(self, args, vars):
         self.vars = vars
