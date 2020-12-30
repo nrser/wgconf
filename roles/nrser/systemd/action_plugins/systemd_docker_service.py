@@ -4,26 +4,77 @@ from __future__ import annotations
 from typing import *
 import logging
 import shlex
+from os.path import basename, isabs, abspath, join
 
 from nansi.plugins.compose_action import ComposeAction
-from nansi.proper import Proper, prop
+from nansi.proper import Proper, prop, Improper
 from nansi.utils.strings import connect
 from nansi.utils.cmds import iter_opts, TOpts
 from nansi.support.systemd import file_content_for
 
 LOG = logging.getLogger(__name__)
 
+class Config(Improper):
+    @classmethod
+    def cast(cls, value):
+        # BUG  Work-around https://github.com/PyCQA/pylint/issues/3507
+        #      pylint: disable=isinstance-second-argument-not-valid-type
+        if isinstance(value, Mapping):
+            if "copy" in value:
+                return CopyConfig.cast(value["copy"])
+            elif "template" in value:
+                return TemplateConfig.cast(value["template"])
+        return value
+
+class FileConfig(Config):
+    @classmethod
+    def cast(cls, value):
+        # BUG  Work-around https://github.com/PyCQA/pylint/issues/3507
+        #      pylint: disable=isinstance-second-argument-not-valid-type
+        if isinstance(value, str):
+            return cls(src=value)
+        elif isinstance(value, Mapping):
+            return cls(**value)
+        return value
+
+    src     = prop(Optional[str])
+    dest    = prop(Optional[str])
+
+    def task_args(self, config_dir: str) -> Dict[str, Any]:
+        dest = self.dest
+        if dest is None:
+            dest = basename(self.src)
+        if not isabs(dest):
+            dest = join(config_dir, dest)
+        return {
+            k: v for k, v in
+            dict(
+                src     = self.src,
+                dest    = dest,
+                **self.extras(),
+            ).items()
+            if v is not None
+        }
+
+class CopyConfig(FileConfig):
+    action = "copy"
+
+class TemplateConfig(FileConfig):
+    action = "template"
+
 class SystemdDockerService(Proper):
 
     docker_service  = prop(str, "docker.service")
     docker_exe      = prop(str, "/usr/bin/docker")
     file_dir        = prop(str, "/etc/systemd/system")
+    configs_dir     = prop(str, "/usr/local/etc")
 
     state           = prop(Literal['present', 'absent'], 'present')
     name            = prop(str)
     description     = prop(str)
     tag             = prop(str)
     opts            = prop(Optional[TOpts])
+    config          = prop.zero_or_more(Config, item_cast=Config.cast)
 
     @property
     def exec_start(self) -> str:
@@ -32,7 +83,7 @@ class SystemdDockerService(Proper):
             "run",
             "--name", "%n",
             "--rm",
-            *iter_opts(self.opts),
+            *iter_opts(self.opts, subs=dict(config=self.config_dir)),
             self.tag,
         ])
 
@@ -81,6 +132,10 @@ class SystemdDockerService(Proper):
     def file_path(self) -> str:
         return connect(self.file_dir, self.filename)
 
+    @property
+    def config_dir(self) -> str:
+        return connect(self.configs_dir, self.name)
+
 class ActionModule(ComposeAction):
 
     def append_result(self, task, action, result):
@@ -93,6 +148,17 @@ class ActionModule(ComposeAction):
         })
 
     def state_present(self, service: SystemdDockerService):
+        if len(service.config) > 0:
+            self.tasks.file(
+                path    = service.config_dir,
+                state   = "directory",
+            )
+
+            for config in service.config:
+                self.tasks[config.__class__.action](
+                    **config.task_args(service.config_dir)
+                )
+
         unit_file = self.tasks.copy(
             dest    = service.file_path,
             content = service.file_content,
@@ -100,7 +166,7 @@ class ActionModule(ComposeAction):
 
         self.tasks.systemd(
             name        = service.filename,
-            state       = ("restarted" if unit_file.get("changed", False)
+            state       = ("restarted" if self._result.get("changed", False)
                             else "started"),
             enabled     = True,
             daemon_reload   = unit_file.get("changed", False),
@@ -121,6 +187,13 @@ class ActionModule(ComposeAction):
                 "rm",
                 volume,
             ])
+
+        # TODO  Persue independent files? Require they're all under config?
+        #       That's probably better...
+        self.tasks.file(
+            path    = service.config_dir,
+            state   = "absent",
+        )
 
     def compose(self):
         service = SystemdDockerService(**self._task.args)
