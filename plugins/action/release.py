@@ -2,80 +2,79 @@
 
 from __future__ import annotations
 from typing import *
-from os.path import basename, isabs, join
+from os.path import basename, isabs
 from urllib.parse import urlparse
 from operator import attrgetter
 import logging
 import shlex
+from collections import abc
 
 from ansible.errors import AnsibleError
 
-from nansi.plugins.compose_action import ComposeAction
-from nansi.proper import Proper, prop
+from nansi.plugins.action.compose import ComposeAction
+from nansi.plugins.action.args import Arg, ArgsBase, os_fact_format
 from nansi.utils.strings import connect
 from nansi.support.systemd import file_content_for
 
-GO_ARCH_MAP = {
-    "i386": "386",
-    "x86_64": "amd64",
-    "aarch64": "arm64",
-    "armv7l": "armv7",
-    "armv6l": "armv6",
-}
 
 LOG = logging.getLogger(__name__)
 
 
-def cast_url(value):
+def cast_url(args, value):
     if isinstance(value, list):
-        return connect(*value)
-    return value
+        value = connect(*value)
+    return os_fact_format(
+        value,
+        args.task_vars["ansible_facts"],
+        version=args.version,
+    )
 
-
-class Exe(Proper):
+class Exe(ArgsBase):
     @classmethod
-    def cast(cls, value):
+    def cast(cls, parent, value):
         if isinstance(value, str):
-            return cls(filename=basename(value), src=value)
-        elif isinstance(value, Mapping):
-            return cls(**value)
+            return cls(
+                dict(filename=basename(value), src=value),
+                parent.task_vars
+            )
+        elif isinstance(value, abc.Mapping):
+            return cls(value, parent.task_vars)
         LOG.warning(f"Bad type! {type(value)}", dict(value=value))
         return value
 
-    filename    = prop(str)
-    src         = prop(str)
+    filename    = Arg(str)
+    src         = Arg(str)
 
-    def __init__(self, **values):
-        super().__init__(**values)
+    def __init__(self, values, task_vars):
+        super().__init__(values, task_vars)
         if isabs(self.src):
             raise ValueError(
                 f"`{self.__class__.__name__}.src` may *not* be an " +
                 f"absolute path, given `{self.src}`"
             )
 
-class Release(Proper):
-    state       = prop(Literal['present', 'absent'], 'present')
+class Args(ArgsBase):
+    state       = Arg(Literal['present', 'absent'], 'present')
 
-    release_dir = prop(str, "/usr/local/release")
-    bin_dir     = prop(str, "/usr/local/bin")
-    tmp_dir     = prop(str, "/tmp/release")
-    etc_dir     = prop(str, "/usr/local/etc")
-    systemd_dir = prop(str, "/etc/systemd/system")
+    release_dir = Arg(str, "/usr/local/release")
+    bin_dir     = Arg(str, "/usr/local/bin")
+    tmp_dir     = Arg(str, "/tmp/release")
+    etc_dir     = Arg(str, "/usr/local/etc")
+    systemd_dir = Arg(str, "/etc/systemd/system")
 
-    name        = prop(str)
-    description = prop(str, attrgetter('_default_description'))
-    version     = prop(str)
-    service     = prop(bool, False)
-    user        = prop(Optional[str])
-    url         = prop(str, cast=cast_url)
-    checksum    = prop(Optional[str])
-    exe         = prop.zero_or_more(Exe, item_cast=Exe.cast)
-    args        = prop(Optional[List[str]])
-    systemd     = prop(Dict[str, Dict[str, str]], lambda _: {})
+    name        = Arg(str)
+    description = Arg(str, attrgetter('_default_description'))
+    version     = Arg(str)
+    service     = Arg(bool, False)
+    user        = Arg(Optional[str])
+    url         = Arg(str, cast=cast_url)
+    checksum    = Arg(Optional[str])
+    exe         = Arg.zero_or_more(Exe, item_cast=Exe.cast)
+    args        = Arg(Optional[List[str]])
+    systemd     = Arg(Dict[str, Dict[str, str]], lambda _: {})
 
     def __init__(self, task_args, task_vars):
-        self._task_vars = task_vars
-        super().__init__(**task_args)
+        super().__init__(task_args, task_vars)
 
         # Sanity checks...
 
@@ -85,30 +84,18 @@ class Release(Proper):
 
         for name in ('name', 'version'):
             value = getattr(self, name)
-            if '/' in value:
+            if '/' in value: # pylint: disable=unsupported-membership-test
                 raise Exception(
                     f"No / allowed in `{name}` arg! Given {repr(value)}"
                 )
 
     @property
     def _default_description(self):
-        return f"{self.name} {self.version} release from {self.formatted_url}"
-
-    @property
-    def formatted_url(self):
-        arch = self._task_vars["ansible_facts"]["architecture"]
-        subs = {
-            "arch": self._task_vars["ansible_facts"]["architecture"],
-            "system": self._task_vars["ansible_facts"]["system"].lower(),
-            "version": self.version,
-        }
-        if arch in GO_ARCH_MAP:
-            subs["go_arch"] = GO_ARCH_MAP[arch]
-        return self.url.format(**subs)
+        return f"{self.name} {self.version} release from {self.url}"
 
     @property
     def archive_filename(self):
-        return basename(urlparse(self.formatted_url).path)
+        return basename(urlparse(self.url).path)
 
     @property
     def archive_dir(self):
@@ -139,6 +126,7 @@ class Release(Proper):
     def default_exe_path(self):
         if len(self.exe) == 0:
             return None
+        # pylint: disable=unsubscriptable-object
         return connect(self.bin_dir, self.exe[0].filename)
 
     @property
@@ -160,6 +148,7 @@ class Release(Proper):
 
     @property
     def systemd_data(self) -> Dict[str, Dict[str, str]]:
+        # pylint: disable=no-member
         return {
             "Unit": {
                 "Description": self.description,
@@ -200,15 +189,15 @@ class ActionModule(ComposeAction):
         return self.tasks.stat(path=path)["stat"]["exists"]
 
     def compose(self):
-        release = Release(self._task.args, self._task_vars)
+        args = Args(self._task.args, self._task_vars)
 
-        if release.state == 'present':
-            self.present(release)
-        elif release.state == 'absent':
-            self.absent(release)
+        if args.state == 'present':
+            self.present(args)
+        elif args.state == 'absent':
+            self.absent(args)
         else:
             raise AnsibleError(
-                f"WTF `Release.state` is this? {repr(release.state)}"
+                f"WTF `Release.state` is this? {repr(args.state)}"
             )
 
     def absent(self, release):
@@ -300,7 +289,7 @@ class ActionModule(ComposeAction):
             )
 
 
-    def _get_mv_src(self, release: Release) -> str:
+    def _get_mv_src(self, release: Args) -> str:
         '''Helper -- need to figure out what-the-hell came out of the archive.
         This seems so stupid, prob a good candidate to be replaced with a module
         at some point (never)'''

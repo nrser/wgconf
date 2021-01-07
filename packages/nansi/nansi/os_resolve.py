@@ -48,11 +48,11 @@ def is_debug(log=LOG):
 
 def split_version(version_str: str) -> Optional[List[str]]:
     match = VERSION_RE.search(version_str)
-    
+
     if match is None:
         return None
-    
-    return match.group(0).split('.')   
+
+    return match.group(0).split('.')
 
 def path_format_fact(fact: str) -> str:
     '''
@@ -91,7 +91,7 @@ def print_facts(
     printer = log.debug,
 ) -> None:
     printer("Resolution facts:")
-    
+
     for name, key in RESOLVE_FACT_KEYS.items():
         if has_fact(ansible_facts, name):
             printer(
@@ -106,7 +106,7 @@ def get_segments(
 ) -> List[List[Tuple[str, str]]]:
     if log.isEnabledFor(logging.DEBUG):
         print_facts(ansible_facts, format=format)
-    
+
     # Return a list...
     return filtered(
         # ...of non-empty...
@@ -134,7 +134,7 @@ def iter_os_key_paths(
     '''Iterate over "key paths" to resolve relative to Ansible os facts,
     from most to least specific. Can be used to find files, dictionary values,
     etc.
-    
+
     >>> ansible_facts = dict(
     ...     distribution            = 'Ubuntu',
     ...     distribution_version    = '18.04',
@@ -155,10 +155,10 @@ def iter_os_key_paths(
     ('system', 'linux', 'kernel', '4')
     ('system', 'linux')
     ('any',)
-    
+
     MacOS is weird 'cause we get the kernel version as the
     `distribution_release`, but shouldn't be too much of a problem in practice.
-    
+
     >>> ansible_facts = dict(
     ...     distribution            = 'MacOSX',
     ...     distribution_version    = '10.14.6',
@@ -180,7 +180,7 @@ def iter_os_key_paths(
     ('system', 'darwin', 'kernel', '18')
     ('system', 'darwin')
     ('any',)
-    
+
     >>> ansible_facts = dict(
     ...     distribution            = 'Microsoft Windows Server 2016 Datacenter',
     ...     distribution_version    = '10.0.14393.0',
@@ -205,22 +205,22 @@ def iter_os_key_paths(
     ('any',)
     '''
     segments_list = get_segments(ansible_facts, format=format)
-    
+
     if len(segments_list) == 0:
         raise KeyError(
             f"Did not find *any* os facts in `ansible_facts`, " +
             "maybe `gather_facts` is disabled?"
         )
-    
+
     for segments in segments_list:
         last_name, last_value = segments[-1]
-        
+
         if (
             last_name in ('version', 'kernel') and
             (version_segments := split_version(last_value))
         ):
             base_segments = flatten(segments[0:-1])
-            
+
             for end in range(len(version_segments), 0, -1):
                 yield (
                     *base_segments,
@@ -229,7 +229,7 @@ def iter_os_key_paths(
                 )
         else:
             yield flatten(segments)
-    
+
     if fallback is not None:
         yield (fallback,)
 
@@ -251,7 +251,7 @@ def os_map_resolve(ansible_facts: TAnsibleFacts, map: Mapping):
     ...     system                  = 'Darwin',
     ...     kernel                  = '18.7.0',
     ... )
-    
+
     >>> os_map_resolve(ubuntu_facts, {
     ...     'family': {
     ...         'debian': 'resolve Debian',
@@ -259,7 +259,7 @@ def os_map_resolve(ansible_facts: TAnsibleFacts, map: Mapping):
     ...     },
     ... })
     'resolve Debian'
-    
+
     >>> os_map_resolve(macos_facts, {
     ...     'family': {
     ...         'debian': 'resolve Debian',
@@ -267,7 +267,7 @@ def os_map_resolve(ansible_facts: TAnsibleFacts, map: Mapping):
     ...     },
     ... })
     'resolve Darwin'
-    
+
     >>> os_map_resolve(ubuntu_facts, {
     ...     'distribution': {
     ...         'ubuntu': 'resolve Ubuntu (any)',
@@ -275,7 +275,7 @@ def os_map_resolve(ansible_facts: TAnsibleFacts, map: Mapping):
     ...     },
     ... })
     'resolve Ubuntu (any)'
-    
+
     >>> os_map_resolve(macos_facts, {
     ...     'distribution': {
     ...         'ubuntu': 'resolve Ubuntu (any)',
@@ -283,7 +283,7 @@ def os_map_resolve(ansible_facts: TAnsibleFacts, map: Mapping):
     ...     },
     ... })
     'resolve macOS (any)'
-    
+
     >>> os_map_resolve(ubuntu_facts, {
     ...     'distribution': {
     ...         'ubuntu': {
@@ -295,7 +295,7 @@ def os_map_resolve(ansible_facts: TAnsibleFacts, map: Mapping):
     ...     },
     ... })
     'resolve Ubuntu 18.04'
-    
+
     >>> os_map_resolve(ubuntu_facts, {
     ...     'distribution': {
     ...         'ubuntu': {
@@ -307,10 +307,17 @@ def os_map_resolve(ansible_facts: TAnsibleFacts, map: Mapping):
     ...     },
     ... })
     'resolve Ubuntu (any)'
+
+    >>> os_map_resolve(ubuntu_facts, {
+    ...     'system': {
+    ...         'linux': 'OK',
+    ...     },
+    ... })
+    'OK'
     '''
-    
+
     tried = []
-    
+
     for key_path in iter_os_key_paths(ansible_facts):
         if value := dig(map, *key_path):
             if isinstance(value, Mapping) and len(key_path) == 2:
@@ -322,7 +329,7 @@ def os_map_resolve(ansible_facts: TAnsibleFacts, map: Mapping):
                 return value
         else:
             tried.append(key_path)
-        
+
     raise OSResolveError("Failed to resolve os value from mapping", tried)
 
 def os_file_resolve(
@@ -332,13 +339,13 @@ def os_file_resolve(
     format: Optional[Callable[[str], str]]= path_format_fact,
 ):
     '''Resolve a file using Ansible os facts, starting at a base directory.
-    
+
     Useful (and used!) for resolving tasks, templates... whatever.
-    
+
     - `ansible_facts: Mapping` - Ansible's facts mapping.
     - `base_dir: str` - Directory to start from.
-    - `exts: Sequence[str]` - Extensions to check (in order). 
-    
+    - `exts: Sequence[str]` - Extensions to check (in order).
+
     >>> ubuntu_facts = dict(
     ...     distribution            = 'Ubuntu',
     ...     distribution_version    = '18.04',
@@ -355,7 +362,7 @@ def os_file_resolve(
     ...     system                  = 'Darwin',
     ...     kernel                  = '18.7.0',
     ... )
-    
+
     >>> handle, base_dir, rel = temp_paths(
     ...     'distribution/ubuntu/version/18.04.yaml',
     ...     'distribution/ubuntu.json',
@@ -363,13 +370,13 @@ def os_file_resolve(
     ...     'family/darwin.json',
     ...     'any.yaml',
     ... )
-    
+
     >>> rel( os_file_resolve(ubuntu_facts, base_dir, ['yaml', 'json']) )
     'distribution/ubuntu/version/18.04.yaml'
-    
+
     >>> rel( os_file_resolve(macos_facts, base_dir, ['yaml', 'json']) )
     'family/darwin.json'
-    
+
     >>> rel(
     ...     os_file_resolve(
     ...         {   **ubuntu_facts,
@@ -380,7 +387,7 @@ def os_file_resolve(
     ...     )
     ... )
     'distribution/ubuntu.json'
-    
+
     >>> rel(
     ...     os_file_resolve(
     ...         {   **ubuntu_facts,
@@ -391,26 +398,26 @@ def os_file_resolve(
     ...     )
     ... )
     'family/debian.yaml'
-    
+
     >>> handle.cleanup()
     '''
     if is_debug():
         log.debug(f"START {__name__}.os_file_resolve()")
         log.debug(f"  @see {__file__}")
-        
+
         log.debug("Base directory:")
         log.debug(f"  {base_dir}")
-    
+
     tried = []
     exts_glob_str = '{' + ','.join(exts) + '}'
-    
+
     for key_path in iter_os_key_paths(ansible_facts, format=format):
         bare_rel_path = os.path.join(*key_path)
-        
+
         for ext in exts:
             rel_path = f"{bare_rel_path}.{ext}"
             path = os.path.join(base_dir, rel_path)
-            
+
             if os.path.exists(path):
                 if os.path.isfile(path):
                     if is_debug():
@@ -423,12 +430,12 @@ def os_file_resolve(
                         log.debug(f"  {path}")
                     return path
                 log.warn(f"Path exists but is not a file: {path}")
-        
+
         rel_glob = f"{bare_rel_path}.{exts_glob_str}"
         tried.append(rel_glob)
-        
+
         log.debug(f"Not found: {rel_glob}")
-        
+
     raise OSResolveError(
         f"Failed to resolve os file starting from {base_dir}",
         tried

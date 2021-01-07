@@ -1,6 +1,6 @@
-import urllib.parse
+from typing import *
 
-from nansi.utils.collections import flat_map, iter_flat
+from nansi.utils.collections import iter_flat
 
 
 def connect(*parts, seperator: str = "/") -> str:

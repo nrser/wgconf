@@ -7,8 +7,6 @@ Typed properties, with optional defaults and cast functions.
 from __future__ import annotations
 from typing import *
 import logging
-from sys import exc_info
-import collections.abc
 
 from typeguard import check_type
 
@@ -85,17 +83,21 @@ class prop(property):
             default = default(instance)
         return default
 
-    def _try_cast(self, value, instance=None):
+    def _try_cast(self, instance, value):
         if self.cast is not None:
-            try:
-                return self.cast(value)
+            # try:
+            return self.cast(instance, value)
+            #
+            # This is hard as hell to track down if `cast` is being used as a
+            # `T -> T` transform!?!?!
+            #
             # pylint: disable=broad-except
-            except Exception:
-                log.error(
-                    f"prop {self.__str__(instance)} raised casting value "
-                    + repr(value),
-                    exc_info=exc_info(),
-                )
+            # except Exception:
+            #     log.error(
+            #         f"prop {self.__str__(instance)} raised casting value "
+            #         + repr(value),
+            #         exc_info=exc_info(),
+            #     )
         return value
 
     def _get(self, instance):
@@ -110,7 +112,7 @@ class prop(property):
     def _set(self, instance, value) -> None:
         name, attr_name = self._names(instance)
 
-        value = self._try_cast(value)
+        value = self._try_cast(instance, value)
 
         self._check_type(
             instance,
@@ -130,7 +132,9 @@ class prop(property):
     ) -> None:
         name, attr_name = self._names(instance)
 
-        value = self._get_default(instance)
+        # Since if default behaves different than given value it's weird in
+        # practice
+        value = self._try_cast(instance, self._get_default(instance))
 
         self._check_type(
             instance,
@@ -154,30 +158,6 @@ class prop(property):
             return f"???.???: {self.type}"
         else:
             return f"{instance.__class__}.{self._name(instance)}: {self.type}"
-
-    @classmethod
-    def one_or_more(cls, item_type, default=None, item_cast=None):
-        def cast(value):
-            if not isinstance(value, list):
-                value = [value]
-            if item_cast is None:
-                return value
-            return [item_cast(item) for item in value]
-
-        return cls(List[item_type], default=default, cast=cast)
-
-    @classmethod
-    def zero_or_more(cls, item_type, default=lambda _: [], item_cast=None):
-        def cast(value):
-            if value is None:
-                return []
-            if not isinstance(value, list):
-                value = [value]
-            if item_cast is None:
-                return value
-            return [item_cast(item) for item in value]
-
-        return cls(List[item_type], default=default, cast=cast)
 
 
 class Proper:
@@ -210,7 +190,7 @@ class Proper:
         for name, value in values.items():
             if name not in props:
                 raise PropInitError(
-                    f"No property {name} on {self.__class__.__name__}",
+                    f"No property {name} on {self.__class__}",
                     instance=self,
                     name=name,
                     value=value,
@@ -225,101 +205,8 @@ class Proper:
             if not hasattr(self, f"_{name}"):
                 p._set_to_default(self)
 
-class Improper(Proper, collections.abc.Mapping):
-    def __init__(self, **values):
-        prop_values = {
-            name: value
-            for name, value in values.items()
-            if self.__class__.is_prop(name)
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            name: getattr(self, name)
+            for name in self.__class__.iter_prop_names()
         }
-
-        Proper.__init__(self, **prop_values)
-
-        self.__extras__ = {
-            name: value
-            for name, value in values.items()
-            if not self.__class__.is_prop(name)
-        }
-
-    def __len__(self):
-        return len(self.__class__.iter_prop_names()) + len(self.__extras__)
-
-    def __contains__(self, key: Any) -> bool:
-        return (
-            isinstance(key, str) and
-            (self.__class__.is_prop(key) or key in self.__extras__)
-        )
-
-    def __getitem__(self, key: Any) -> Any:
-        if not isinstance(key, str):
-            raise KeyError(
-                f"Keys must be str, given {type(key)}: {repr(key)}"
-            )
-        if self.__class__.is_prop(key):
-            return getattr(self, key)
-        return self.__extras__[key]
-
-    def __setitem__(self, key: str, value: Any) -> None:
-        if not isinstance(key, str):
-            raise TypeError(
-                f"Keys must be str, given {type(key)}: {repr(key)}"
-            )
-        if self.__class__.is_prop(key):
-            setattr(self, key, value)
-        else:
-            self.__extras__[key] = value
-
-    def __delitem__(self, key: str) -> None:
-        if self.__class__.is_prop(key):
-            delattr(self, key)
-        else:
-            del self.__extras__[key]
-
-    def keys(self) -> Generator[str, None, None]:
-        yield from self.__class__.iter_prop_names()
-        yield from self.__extras__.keys()
-
-    __iter__ = keys
-
-    def values(self) -> Generator[Any, None, None]:
-        for name in self.__class__.iter_prop_names():
-            yield getattr(self, name)
-        yield from self.__extras__.items()
-
-    def items(self) -> Generator[Tuple[str, Any], None, None]:
-        for name in self.__class__.iter_prop_names():
-            yield (name, getattr(self, name))
-        yield from self.__extras__.items()
-
-    def get(self, key: Any, default: Any = None) -> Any:
-        if key in self:
-            return self[key]
-        else:
-            return default
-
-    def extra_keys(self) -> collections.abc.KeysView:
-        return self.__extras__.keys()
-
-    def extra_values(self) -> collections.abc.ValuesView:
-        return self.__extras__.values()
-
-    def extra_items(self) -> collections.abc.ItemsView:
-        return self.__extras__.items()
-
-    def extras(self) -> Dict[str, Any]:
-        return dict(self.extra_items())
-
-    # def prop_keys(self) -> Generator[str, None, None]:
-    #     return self.__class__.iter_prop_names()
-
-    # def prop_values(self) -> Generator[Any, None, None]:
-    #     for name in self.__class__.iter_prop_names():
-    #         yield getattr(self, name)
-
-    # def prop_items(self) -> Generator[Tuple[str, Any], None, None]:
-    #     for name in self.__class__.iter_prop_names():
-    #         yield (name, getattr(self, name))
-
-    # Fucking-A, this breaks Proper.props()
-    # def props(self) -> Dict[str, Any]:
-    #     return dict(self.prop_items())

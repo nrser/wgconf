@@ -1,8 +1,6 @@
 from typing import *
-from pathlib import Path
 import re
-import os
-import itertools
+from collections import abc
 
 K = TypeVar('K')
 T = TypeVar('T')
@@ -13,6 +11,7 @@ TNotFound   = TypeVar('TNotFound')
 TResult     = TypeVar('TResult')
 TKey        = TypeVar('TKey')
 TValue      = TypeVar('TValue')
+TAlias      = TypeVar('TAlias')
 
 Nope = NewType('Nope', Union[None, Literal[False]])
 
@@ -23,10 +22,10 @@ def is_nope(x: Any) -> bool:
     '''
     >>> is_nope(None)
     True
-    
+
     >>> is_nope(False)
     True
-    
+
     >>> any(is_nope(x) for x in ('', [], {}, 0, 0.0))
     False
     '''
@@ -39,23 +38,23 @@ def find(
 ) -> Union[T, TNotFound]:
     '''Return the first item in an iterator `itr` for which `predicate`
     returns anything other than `False` or `None`.
-    
+
     >>> find(lambda x: x % 2 == 0, (1, 2, 3, 4))
     2
-    
+
     If `predicate` returns `False` or `None` for **all** items in `itr` then
     `not_found` is returned, which defaults to `None`.
-    
+
     >>> find(lambda p: Path(p).exists(), ('./a/b', './c/d'), '/dev/null')
     '/dev/null'
-    
+
     Notes that this diverges from Python's "truthy" behavior, where things like
     empty lists and the number zero are "false". That (obviously) got in the way
     of finding objects like those. I think this approach is a lot more clear,
     if a bit more work to explain.
-    
+
     Allows this to work, for example:
-    
+
     >>> find(lambda lst: len(lst) == 0, ([1, 2], [], [3, 4, 5]))
     []
     '''
@@ -71,18 +70,18 @@ def need(
     '''
     Like `find()`, but raises `NotFoundError` if `predicate` returns `False` or
     `None` for every item in `itr`.
-    
+
     >>> need(lambda x: x > 2, [1, 2, 3])
     3
-    
+
     >>> need(lambda x: x > 5, [1, 2, 3])
     Traceback (most recent call last):
         ...
     NotFoundError: Not found
-    
+
     `need()` _can_ return `None`, if that's the value of the iterator entry it
     matched:
-    
+
     >>> need(lambda x: x is None, [1, None, 2]) is None
     True
     '''
@@ -101,9 +100,9 @@ def find_map(
     '''
     Like `find()`, but returns first value returned by `predicate` that is not
     `False` or `None`.
-    
+
     >>> find_map(
-    ...     lambda dct: dct.get('z'),        
+    ...     lambda dct: dct.get('z'),
     ...     ({'x': 1}, {'y': 2}, {'z': 3}),
     ... )
     3
@@ -113,7 +112,7 @@ def find_map(
         if not is_nope(result):
             return result
     return not_found
-    
+
 def need_map(
     fn: Callable[[TItem], Union[TResult, Nope]],
     itr: Iterator[TItem],
@@ -139,10 +138,10 @@ def first(itr: Iterable[T]) -> Optional[T]:
     '''
     >>> first([1, 2, 3])
     1
-    
+
     >>> first([]) is None
     True
-    
+
     >>> def naturals():
     ...     i = 1
     ...     while True:
@@ -156,19 +155,19 @@ def first(itr: Iterable[T]) -> Optional[T]:
 def last(itr: Iterable[T]) -> Optional[T]:
     '''
     Get the last item in an iterator `itr`, or `None` if it's empty.
-    
+
     **WARNING** If `itr` goes on forever, so will this function.
-    
+
     >>> last([1, 2, 3])
     3
-    
+
     >>> last([]) is None
     True
-    
+
     >>> last(range(1, 100))
     99
     '''
-    if isinstance(itr, Sequence):
+    if isinstance(itr, abc.Sequence):
         itr_len = len(itr)
         if itr_len == 0:
             return None
@@ -178,15 +177,15 @@ def last(itr: Iterable[T]) -> Optional[T]:
         last_item = item
     return last_item
 
-def pick(map: Mapping[K, V], keys: Container[K]) -> Dict[K, V]:
-    return {key: value for key, value in map.items() if key in keys}
+def pick(mapping: Mapping[K, V], keys: Container[K]) -> Dict[K, V]:
+    return {key: value for key, value in mapping.items() if key in keys}
 
 def dig(target: Union[Sequence, Mapping], *key_path: Sequence):
     '''Like Ruby - get the value at a key-path, or `None` if any keys in the
     path are missing.
-    
+
     Will puke if an intermediate key's value is **not** a `dict`.
-    
+
     >>> d = {'A': {'B': 'V'}}
     >>> dig(d, 'A', 'B')
     'V'
@@ -194,10 +193,10 @@ def dig(target: Union[Sequence, Mapping], *key_path: Sequence):
     True
     >>> dig(d)
     {'A': {'B': 'V'}}
-    
+
     >>> dig(['a', 'b'], 0)
     'a'
-    
+
     >>> mixed = {'a': [{'x': 1}, {'y': [2, 3]}], 'b': {'c': [4, 5]}}
     >>> dig(mixed, 'a', 0, 'x')
     1
@@ -210,22 +209,66 @@ def dig(target: Union[Sequence, Mapping], *key_path: Sequence):
     >>> dig(mixed, 'b', 'c', 1)
     5
     '''
-    
+
     for key in key_path:
-        if isinstance(target, Sequence):
+        if isinstance(target, abc.Sequence):
             if isinstance(key, int) and key >= 0 and key < len(target):
                 target = target[key]
             else:
                 return None
-        elif key in target:
+        elif isinstance(target, abc.Collection) and key in target:
             target = target[key]
         else:
             return None
     return target
 
+def each(
+    types: Union[Type, Iterable[Type]],
+    x: Union[None, T, Iterable[T]],
+) -> Generator[T, None, None]:
+    '''
+    Iterate over "zero or more" of some type `T`, where:
+
+    1.  Zero `T` can also be represented by `None`.
+    2.  One `T` is anything is *either*:
+        1.  *Not* an `Iterable` (since then we can't iterate over it!).
+        2.  An instance of the `skip` type(s) (defaults to `(str, bytes)`).
+
+            > This is a practical matter, as I can't see any *actual* difference
+            > between a `str` and a `list`, though lists of strings are *very*
+            > common and I have *never* wanted to iterate over their charasters
+            > (as would happen without this exception).
+    3.  Everything else is yielded from (since we already know it's an
+        `Iterable`).
+
+    If the `T` in question is an `Iterable` you will need to add it to `skip`
+    to get the right behavior.
+
+    >>> [_ for _ in each(str, 'blah')]
+    ['blah']
+
+    >>> [_ for _ in each(str, ['blah', 'blah', 'blah me'])]
+    ['blah', 'blah', 'blah me']
+
+    >>> [_ for _ in each(str, None)]
+    []
+
+    >>> [_ for _ in each(tuple, (1, 2))]
+    [(1, 2)]
+
+    >>> [_ for _ in each(dict, {'name': 'NRSER', 'version': '0.1.0'})]
+    [{'name': 'NRSER', 'version': '0.1.0'}]
+    '''
+    if x is None:
+        return
+    if isinstance(x, types):
+        yield x
+    else:
+        yield from x
+
 def iter_flat(itr: Iterable, skip=(str, bytes)):
     for entry in itr:
-        if (not isinstance(entry, Iterable)) or isinstance(entry, skip):
+        if (not isinstance(entry, abc.Iterable)) or isinstance(entry, skip):
             yield entry
         else:
             yield from iter_flat(entry)
@@ -234,13 +277,13 @@ def flatten(itr: Iterable, skip=(str, bytes), into=tuple):
     '''
     >>> flatten(['abc', '123'])
     ('abc', '123')
-    
+
     >>> flatten(['abc', ['123', 'ddd']])
     ('abc', '123', 'ddd')
-    
+
     >>> flatten([1, [2, [3, [4, [5]]]]], into=list)
     [1, 2, 3, 4, 5]
-    
+
     >>> flatten([{'a': 1, 'b': 2}, 'c', 3])
     ('a', 'b', 'c', 3)
     '''
@@ -258,14 +301,14 @@ def flat_map(
     itr, # : Iterable[T], Not right, can we even *do* recursive types?!?
     /,
     skip: Tuple[type] = (str, bytes),
-) -> Iterable[TResult]: 
+) -> Iterable[TResult]:
     for item in iter_flat(itr):
         result = fn(item)
-        if isinstance(result, Iterable) and not isinstance(result, skip):
+        if isinstance(result, abc.Iterable) and not isinstance(result, skip):
             yield from iter_flat(result)
         else:
             yield result
-        
+
 
 def smells_like_namedtuple(obj):
     # NOTE  `namedtuple` is nasty under there. Zen for thee, meta-spaghetti for
@@ -279,10 +322,10 @@ def only(collection: Collection[TItem]) -> TItem:
     '''Stupid, but surprisingly useful: you have an iterable that should only
     have one element, and you want that element, or to know if you were wrong
     for some reason.
-    
+
     >>> only([1])
     1
-    
+
     >>> only([1, 2])
     Traceback (most recent call last):
         ...
@@ -293,7 +336,22 @@ def only(collection: Collection[TItem]) -> TItem:
     )
     return first(collection)
 
+def csl(iterable: Iterable) -> str:
+    '''
+    Join an iterable into a comma-seperated list, using `repr` to convert
+    entries to strings.
+
+    A quick, crude solution used in error messages and such.
+
+    >>> csl([1, 2, 3])
+    '1, 2, 3'
+
+    >>> csl(['1', '2', '3'])
+    "'1', '2', '3'"
+    '''
+    return ", ".join(map(repr, iterable))
+
 if __name__ == '__main__':
+    from pathlib import Path # pylint: disable=unused-import
     import doctest
     doctest.testmod()
-    

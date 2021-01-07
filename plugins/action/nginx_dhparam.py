@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from nansi.plugins.compose_action import ComposeAction
+from nansi.plugins.action.compose import ComposeAction
+
+# TODO  args conversion needs an improper..?
 
 DEFAULTS = dict(
     path = '/etc/ssl/certs/dhparam.pem',

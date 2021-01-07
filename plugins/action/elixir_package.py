@@ -1,28 +1,27 @@
 from __future__ import annotations
 from typing import *
 
-from nansi.plugins.compose_action import ComposeAction
-from nansi.proper import Proper, prop
+from nansi.plugins.action.compose import ComposeAction
+from nansi.plugins.action.args import Arg, ArgsBase
 from nansi.os_resolve import os_map_resolve
 
-class Args(Proper):
-    name            = prop( str, 'elixir' )
-    state           = prop( Literal['present', 'absent'], 'present' )
-    version         = prop( str )
+class Args(ArgsBase):
+    name            = Arg( str, 'elixir' )
+    state           = Arg( Literal['present', 'absent'], 'present' )
+    version         = Arg( str )
 
 class ActionModule(ComposeAction):
     def os_family_debian(self):
-        args = Args(**self._task.args)
+        args = Args(self._task.args, self._task_vars)
 
         self.tasks["nrser.nansi.apt_version"](
-            state = args.state,
-            name = args.name,
-            version = args.version,
+            packages = dict(
+                name = args.name,
+                version = args.version,
+            ),
         )
 
     def compose(self):
-        # TODO Implement this..?
-        # os_method_resolve(self._task_vars["ansible_facts"], self)()
         methods = {
             'family': {
                 'debian': self.os_family_debian,

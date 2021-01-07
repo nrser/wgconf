@@ -1,26 +1,32 @@
 from __future__ import annotations
 from typing import *
+import logging
 
 from nansi.plugins.action.compose import ComposeAction
-from nansi.plugins.action.args import Arg, ArgsBase, os_fact_formatter
+from nansi.plugins.action.args import Arg, ArgsBase, fact_formatter
 from nansi.os_resolve import os_map_resolve
+
+LOG = logging.getLogger(__name__)
 
 class Args(ArgsBase):
     state   = Arg( Literal['present', 'absent'], 'present' )
     version = Arg( str )
 
+    @property
+    def major_version(self) -> str:
+        return self.version.split(".", 1)[0] # pylint: disable=no-member
+
 class DebianArgs(Args):
     name        = Arg(  str,
-                        "esl-erlang" )
+                        "nodejs" )
     key_url     = Arg(  str,
-                        "https://packages.erlang-solutions.com"
-                        "/ubuntu/erlang_solutions.asc" )
+                        "https://deb.nodesource.com/gpgkey/nodesource.gpg.key" )
     key_id      = Arg(  str,
-                        "2C8B586B1FC61E31C836D7B450B12719341540CB" )
+                        "302755F9E22EDC1ABB62E9B56C5CDECAAA01DA2C" )
     repo        = Arg(  str,
-                        "deb https://packages.erlang-solutions.com/ubuntu "
-                        "{release} contrib",
-                        cast=os_fact_formatter() )
+                        "deb https://deb.nodesource.com"
+                        "/node_{major_version}.x {release} main",
+                        cast=fact_formatter('version', 'major_version') )
 
     @property
     def apt_ext_names(self):
@@ -37,7 +43,7 @@ class ActionModule(ComposeAction):
             state = args.state,
             key_url = args.key_url,
             key_id = args.key_id,
-            respoitory_repo = args.repo,
+            repo = args.repo,
         )
 
     def compose(self):

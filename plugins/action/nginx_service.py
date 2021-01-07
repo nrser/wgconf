@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from nansi.plugins.compose_action import ComposeAction
+from nansi.plugins.action.compose import ComposeAction
 
 DEFAULTS = dict(
     name        = 'nginx',

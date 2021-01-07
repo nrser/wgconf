@@ -1,21 +1,15 @@
 from __future__ import annotations
-from os.path import join, realpath, dirname
+from os.path import join
 from collections import namedtuple
 from typing import *
-import logging
+from operator import methodcaller
 
-from ansible.utils.display import Display
-
-from nansi.plugins.compose_action import ComposeAction
+from nansi.plugins.action.compose import ComposeAction
 from nansi.proper import Proper, prop
 
-from nansi.logging.display_handler import DisplayHandler
+from ansible_collections.nrser.nansi.plugins.action.nginx_config import role_path # pylint: disable=import-error,no-name-in-module
 
-D = Display()
-
-nansi_log = logging.getLogger('nansi')
-nansi_log.setLevel(logging.DEBUG)
-nansi_log.addHandler(DisplayHandler(D))
+# TODO  Needs work!
 
 def from_var(name, *args):
     args_len = len(args)
@@ -29,15 +23,6 @@ def from_var(name, *args):
             str(args_len)
         )
 
-def from_method(name):
-    return lambda self: getattr(self, name)()
-
-def from_attr(name):
-    return lambda self: getattr(self, name)
-
-def role_path(rel_path):
-    return realpath(join(dirname(__file__), '..', rel_path))
-
 def cast_server_names(value: T) -> Union[List[str], T]:
     '''
     If `value` is a `str`, splits it into a list of `str`. All other `value`
@@ -48,8 +33,7 @@ def cast_server_names(value: T) -> Union[List[str], T]:
     '''
     if isinstance(value, str):
         return str.split()
-    else:
-        return value
+    return value
 
 class NginxSite(Proper):
     # 'available' and 'disabled' are the same thing -- 'available' is the Nginx
@@ -81,12 +65,12 @@ class NginxSite(Proper):
     log_dir     = prop( str, from_var('nginx_log_dir') )
 
     state               = prop( STATE_TYPE, 'enabled' )
-    # server_name         = prop( str, from_method('_default_server_name') )
+    # server_name         = prop( str, methodcaller('_default_server_name') )
     server_names        = prop( List[str],
-                                default = from_method('_default_server_name'),
+                                default = methodcaller('_default_server_name'),
                                 cast    = cast_server_names )
 
-    root                = prop( str, from_var("nginx_site_root") )
+    root                = prop( str, from_var("nginx_site_root", "/var/www/html") )
 
     http                = prop( Union[ bool, STATE_TYPE, Literal['redirect'] ],
                                 True )
@@ -105,10 +89,10 @@ class NginxSite(Proper):
     proxy_scheme        = prop( str, 'http' )
     proxy_host          = prop( str, 'localhost' )
     proxy_port          = prop( Union[ None, int, str ],
-                                from_method('_default_proxy_port') )
+                                methodcaller('_default_proxy_port') )
 
     proxy_dest          = prop( str,
-                                from_method('_default_proxy_dest') )
+                                methodcaller('_default_proxy_dest') )
     proxy_websockets    = prop( bool,
                                 from_var('nginx_proxy_websockets') )
 

@@ -124,6 +124,7 @@ class ComposeAction(ActionBase):
         self._task_vars = None
         self._result = None
         self._var_values = None
+        self.args = None
 
         nansi.logging.setup_for_display()
 

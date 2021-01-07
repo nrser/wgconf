@@ -3,10 +3,6 @@
 
 # Copyright: (c) 2021, [NRSER]
 
-# import yaml
-# with open("/Users/nrser/src/gh/nrser/bogart/collections/ansible_collections/nrser/nansi/doc/modules/apt_version.yaml", "r") as f:
-#     DOCMENTATION = yaml.safe_load(f)
-
 # https://docs.ansible.com/ansible/latest/dev_guide/developing_modules_documenting.html#documentation-block
 DOCUMENTATION = r'''
 ---

@@ -1,12 +1,12 @@
 from typing import *
 from abc import abstractmethod
 import sys
-from types import ModuleType
-from os.path import basename
+# from types import ModuleType
+# from os.path import basename
 
 import yaml
 from ansible.module_utils.basic import AnsibleModule
-from ansible.module_utils.common.warnings import warn
+# from ansible.module_utils.common.warnings import warn
 
 from .errors import FailError
 

@@ -5,40 +5,37 @@ from typing import *
 import logging
 import shlex
 from os.path import basename, isabs, join
+from collections import abc
 
-from nansi.plugins.compose_action import ComposeAction
-from nansi.proper import Proper, prop, Improper
+from nansi.plugins.action.compose import ComposeAction
+from nansi.plugins.action.args import Arg, ArgsBase, OpenArgsBase
 from nansi.utils.strings import connect
 from nansi.utils.cmds import iter_opts, TOpts
 from nansi.support.systemd import file_content_for
 
 LOG = logging.getLogger(__name__)
 
-class Config(Improper):
+class Config(OpenArgsBase):
     @classmethod
-    def cast(cls, value):
-        # BUG  Work-around https://github.com/PyCQA/pylint/issues/3507
-        #      pylint: disable=isinstance-second-argument-not-valid-type
-        if isinstance(value, Mapping):
+    def cast(cls, parent, value):
+        if isinstance(value, abc.Mapping):
             if "copy" in value:
-                return CopyConfig.cast(value["copy"])
+                return CopyConfig.cast(parent, value["copy"])
             elif "template" in value:
-                return TemplateConfig.cast(value["template"])
+                return TemplateConfig.cast(parent, value["template"])
         return value
 
 class FileConfig(Config):
     @classmethod
-    def cast(cls, value):
-        # BUG  Work-around https://github.com/PyCQA/pylint/issues/3507
-        #      pylint: disable=isinstance-second-argument-not-valid-type
+    def cast(cls, parent, value):
         if isinstance(value, str):
-            return cls(src=value)
-        elif isinstance(value, Mapping):
-            return cls(**value)
+            return cls(dict(src=value), parent.task_vars)
+        elif isinstance(value, abc.Mapping):
+            return cls(value, parent.task_vars)
         return value
 
-    src     = prop(Optional[str])
-    dest    = prop(Optional[str])
+    src     = Arg(Optional[str])
+    dest    = Arg(Optional[str])
 
     def task_args(self, config_dir: str) -> Dict[str, Any]:
         dest = self.dest
@@ -62,19 +59,19 @@ class CopyConfig(FileConfig):
 class TemplateConfig(FileConfig):
     action = "template"
 
-class SystemdDockerService(Proper):
+class SystemdDockerService(ArgsBase):
 
-    docker_service  = prop(str, "docker.service")
-    docker_exe      = prop(str, "/usr/bin/docker")
-    file_dir        = prop(str, "/etc/systemd/system")
-    configs_dir     = prop(str, "/usr/local/etc")
+    docker_service  = Arg(str, "docker.service")
+    docker_exe      = Arg(str, "/usr/bin/docker")
+    file_dir        = Arg(str, "/etc/systemd/system")
+    configs_dir     = Arg(str, "/usr/local/etc")
 
-    state           = prop(Literal['present', 'absent'], 'present')
-    name            = prop(str)
-    description     = prop(str)
-    tag             = prop(str)
-    opts            = prop(Optional[TOpts])
-    config          = prop.zero_or_more(Config, item_cast=Config.cast)
+    state           = Arg(Literal['present', 'absent'], 'present')
+    name            = Arg(str)
+    description     = Arg(str)
+    tag             = Arg(str)
+    opts            = Arg(Optional[TOpts])
+    config          = Arg.zero_or_more(Config, item_cast=Config.cast)
 
     @property
     def exec_start(self) -> str:
@@ -88,6 +85,7 @@ class SystemdDockerService(Proper):
         ])
 
     def volumes(self):
+        # pylint: disable=unsupported-membership-test,unsubscriptable-object
         if isinstance(self.opts, dict) and "volume" in self.opts:
             volumes = self.opts["volume"]
             if isinstance(volumes, str):
@@ -188,7 +186,7 @@ class ActionModule(ComposeAction):
                 volume,
             ])
 
-        # TODO  Persue independent files? Require they're all under config?
+        # NOTE  Persue independent files? Require they're all under config?
         #       That's probably better...
         self.tasks.file(
             path    = service.config_dir,
@@ -196,5 +194,5 @@ class ActionModule(ComposeAction):
         )
 
     def compose(self):
-        service = SystemdDockerService(**self._task.args)
+        service = SystemdDockerService(self._task.args, self._task_vars)
         getattr(self, f"state_{service.state}")(service)
