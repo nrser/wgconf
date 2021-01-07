@@ -3,7 +3,7 @@ from ansible.utils.vars import merge_hash
 
 _VER_KEYS = {'version', 'state'}
 
-# TODO  Update to new stuff
+# TODO  Update to new stuff..?
 
 def _state_for_versions_item(item):
     if isinstance(item, str):

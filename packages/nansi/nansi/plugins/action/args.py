@@ -8,16 +8,18 @@ from nansi.support.go import GO_ARCH_MAP
 
 LOG = logging.getLogger(__name__)
 
+
 def os_fact_format(string: str, ansible_facts, **extras) -> str:
     os_facts = {
         "arch": ansible_facts["architecture"].lower(),
         "system": ansible_facts["system"].lower(),
         "release": ansible_facts["distribution_release"].lower(),
-        **extras
+        **extras,
     }
     if os_facts["arch"] in GO_ARCH_MAP:
         os_facts["go_arch"] = GO_ARCH_MAP[os_facts["arch"]]
     return string.format(**os_facts)
+
 
 def os_fact_formatter(*extra_attrs):
     # pylint: disable=redefined-outer-name
@@ -25,22 +27,25 @@ def os_fact_formatter(*extra_attrs):
         return os_fact_format(
             string,
             args.task_vars["ansible_facts"],
-            **{ name: getattr(args, name) for name in extra_attrs },
+            **{name: getattr(args, name) for name in extra_attrs},
         )
+
     return cast
 
+
 def attr_formatter(*names):
-    '''
+    """
     >>> class Args(ArgsBase):
     ...     name = Arg( str )
     ...     path = Arg( str, "{name}.txt", cast=attr_formatter("name") )
     ...
     >>> Args({"name": "blah"}).path
     'blah.txt'
-    '''
+    """
     return lambda args, string: string.format(
         **{name: getattr(args, name) for name in names}
     )
+
 
 class Arg(prop):
     # Don't complain about `typing.cast` override
@@ -49,9 +54,9 @@ class Arg(prop):
     @staticmethod
     def auto_cast_args(arg_type, cast):
         if (
-            cast is None and
-            isinstance(arg_type, type) and
-            issubclass(arg_type, ArgsBase)
+            cast is None
+            and isinstance(arg_type, type)
+            and issubclass(arg_type, ArgsBase)
         ):
             return lambda args, values: arg_type(values, args.task_vars)
         return cast
@@ -70,6 +75,7 @@ class Arg(prop):
     @classmethod
     def one_or_more(cls, item_type, default=None, item_cast=None, alias=None):
         item_cast = Arg.auto_cast_args(item_type, item_cast)
+
         def cast(instance, value):
             if not isinstance(value, list):
                 value = [value]
@@ -82,6 +88,7 @@ class Arg(prop):
     @classmethod
     def zero_or_more(cls, item_type, default=None, item_cast=None, alias=None):
         item_cast = Arg.auto_cast_args(item_type, item_cast)
+
         def cast(instance, value):
             if value is None:
                 return []
@@ -93,8 +100,9 @@ class Arg(prop):
 
         return cls(List[item_type], default=default, cast=cast, alias=alias)
 
+
 class ArgsBase(Proper):
-    '''
+    """
     ### Aliases ###
 
     Aliases only operate in one direction: from task args to arg values. This
@@ -115,14 +123,13 @@ class ArgsBase(Proper):
     Traceback (most recent call last):
         ...
     AttributeError: 'Args' object has no attribute 'ex'
-    '''
+    """
 
     @classmethod
     def prop_aliases(cls):
         return {
             name: prop.iter_aliases()
-            for name, prop
-            in cls.iter_props()
+            for name, prop in cls.iter_props()
             if prop.alias is not None
         }
 
@@ -136,6 +143,7 @@ class ArgsBase(Proper):
                 src=values,
             )
         )
+
 
 class OpenArgsBase(ArgsBase, collections.abc.Mapping):
     def __init__(self, values, task_vars=None):
@@ -157,25 +165,20 @@ class OpenArgsBase(ArgsBase, collections.abc.Mapping):
         return len(self.__class__.iter_prop_names()) + len(self.__extras__)
 
     def __contains__(self, key: Any) -> bool:
-        return (
-            isinstance(key, str) and
-            (self.__class__.is_prop(key) or key in self.__extras__)
+        return isinstance(key, str) and (
+            self.__class__.is_prop(key) or key in self.__extras__
         )
 
     def __getitem__(self, key: Any) -> Any:
         if not isinstance(key, str):
-            raise KeyError(
-                f"Keys must be str, given {type(key)}: {repr(key)}"
-            )
+            raise KeyError(f"Keys must be str, given {type(key)}: {repr(key)}")
         if self.__class__.is_prop(key):
             return getattr(self, key)
         return self.__extras__[key]
 
     def __setitem__(self, key: str, value: Any) -> None:
         if not isinstance(key, str):
-            raise TypeError(
-                f"Keys must be str, given {type(key)}: {repr(key)}"
-            )
+            raise TypeError(f"Keys must be str, given {type(key)}: {repr(key)}")
         if self.__class__.is_prop(key):
             setattr(self, key, value)
         else:
@@ -221,6 +224,9 @@ class OpenArgsBase(ArgsBase, collections.abc.Mapping):
     def extras(self) -> Dict[str, Any]:
         return dict(self.extra_items())
 
+    def to_dict(self) -> Dict[str, Any]:
+        return {**super().to_dict(), **self.extras()}
+
     # def prop_keys(self) -> Generator[str, None, None]:
     #     return self.__class__.iter_prop_names()
 
@@ -237,7 +243,8 @@ class OpenArgsBase(ArgsBase, collections.abc.Mapping):
     #     return dict(self.prop_items())
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import doctest
+
     logging.basicConfig(level=logging.DEBUG)
     doctest.testmod()

@@ -1,10 +1,12 @@
 from __future__ import annotations
 from typing import *
 from pathlib import Path
+import os.path
+from operator import methodcaller
 
 from nansi.plugins.action.compose import ComposeAction
+from nansi.plugins.action.args import Arg, OpenArgsBase
 
-# TODO  Get rid of needed vars
 
 def role_path(rel_path):
     return str(
@@ -12,21 +14,27 @@ def role_path(rel_path):
     )
 
 
+class Args(OpenArgsBase):
+    config_dir = Arg(str, "/etc/nginx")
+    run_dir = Arg(str, "/run")
+    log_dir = Arg(str, "/var/log/nginx")
+    user = Arg(str, "www-data")
+    proxy_websockets = Arg(bool, False)
+
+    src = Arg(str, role_path("templates/nginx.conf"))
+    dest = Arg(str, methodcaller("default_dest"))
+
+    def default_dest(self):
+        return os.path.join(self.config_dir, "nginx.conf")
+
+
 class ActionModule(ComposeAction):
     def compose(self):
-        defaults = {
-            "src": role_path("templates/nginx.conf"),
-            "dest": str(
-                Path(self._var_values["nginx_config_dir"]) / "nginx.conf"
-            ),
-            "backup": True,
-        }
-
-        args = self.collect_args(
-            omit_vars="nginx_config_dir",  # Not a `template` task arg
-            defaults=defaults,
-        )
-
+        args = Args(self._task.args, self._task_vars)
         self.tasks.template.add_vars(
-            dir=str(Path(self.render(args["dest"])).parent),
-        )(**args)
+            dir=str(Path(args.dest).parent),
+            run_dir=args.run_dir,
+            log_dir=args.log_dir,
+            user=args.user,
+            proxy_websockets=args.proxy_websockets,
+        )(src=args.src, dest=args.dest, **args.extras())
