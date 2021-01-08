@@ -160,7 +160,7 @@ class ActionModule(ComposeAction):
                 self.tasks.template.add_vars(site=args, config=config)(
                     src=self._loader.get_real_file(config.conf_template),
                     dest=config.conf_path,
-                    backup=True,
+                    # backup=True,
                 )
                 if config.enabled:
                     self.tasks.file(

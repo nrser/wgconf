@@ -6,6 +6,9 @@ from nansi.plugins.action.args import Arg, OpenArgsBase
 class Args(OpenArgsBase):
     path = Arg(str, "/etc/ssl/certs/dhparam.pem")
 
+    # This is already the default, but I wanted to make it explicit
+    size = Arg(int, 4096)
+
 class ActionModule(ComposeAction):
     def compose(self):
         self.tasks.openssl_dhparam(

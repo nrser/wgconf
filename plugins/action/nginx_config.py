@@ -20,6 +20,7 @@ class CommonArgs:
     log_dir = Arg(str, "/var/log/nginx")
     user = Arg(str, "www-data")
     proxy_websockets = Arg(bool, False)
+    exe = Arg(str, "/usr/sbin/nginx")
 
 class Args(OpenArgsBase, CommonArgs):
     src = Arg(str, role_path("templates/nginx.conf"))

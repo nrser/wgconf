@@ -1,2 +1,3 @@
 - name: nginx_restart
-  include_tasks: "{{ role_path }}/handlers/restart.yaml"
+  nginx_service:
+    state: restarted

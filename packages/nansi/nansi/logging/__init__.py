@@ -1,31 +1,37 @@
+from typing import *
 import logging
-
-from .display_handler import DisplayHandler
-from .log_record import LogRecord
 
 from nansi.utils.path import rel
 
+from .kwds_logger import KwdsLogger
+from .rich_handler import RichHandler
+from .display_handler import DisplayHandler
+
 LOG = logging.getLogger(__name__)
 
-_handler = None
-
-def get_handler() -> DisplayHandler:
-    global _handler
-    if _handler is None:
-        _handler = DisplayHandler()
-    return _handler
+NANSI_LOGGER = logging.getLogger("nansi")
+NANSI_COLLECTION_LOGGER = logging.getLogger("ansible_collections.nrser.nansi")
+NRSER_NANSI_LOGGER = logging.getLogger("nrser.nansi")
 
 def setup_for_display():
-    if logging.getLogRecordFactory() is not LogRecord:
-        logging.setLogRecordFactory(LogRecord)
+    logging.setLoggerClass(KwdsLogger)
 
-    pkg_logger = logging.getLogger('nansi')
-    if pkg_logger.level is not logging.DEBUG:
-        pkg_logger.setLevel(logging.DEBUG)
+    # Need to let everything through, then `DisplayHandler` filters using
+    # Ansible's verbose settings
+    for logger in (NANSI_LOGGER, NANSI_COLLECTION_LOGGER, NRSER_NANSI_LOGGER):
+        if logger.level is not logging.DEBUG:
+            logger.setLevel(logging.DEBUG)
+        logger.addHandler(DisplayHandler.singleton())
 
-    handler = get_handler()
-    if handler not in pkg_logger.handlers:
-        pkg_logger.addHandler(handler)
+
+def setup_for_console(level: Optional[int] = None):
+    logging.setLoggerClass(KwdsLogger)
+
+    if level is not None:
+        NANSI_LOGGER.setLevel(level)
+
+    NANSI_LOGGER.addHandler(RichHandler.singleton())
+
 
 def get_plugin_logger(file_path):
     setup_for_display()

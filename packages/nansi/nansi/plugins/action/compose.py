@@ -128,9 +128,12 @@ class ComposeAction(ActionBase):
 
         nansi.logging.setup_for_display()
 
+        # self.log = logging.getLogger(
+        #     f"{self.__class__.__module__}.{self.__class__.__name__}"
+        # )
+
         self.log = logging.getLogger(
-            f"{ComposeAction.__module__}.{ComposeAction.__name__}"
-            + f"( _task.action = {repr(self._task.action)} )"
+            f"nrser.nansi.{self.__class__.__module__.split('.')[-1]}"
         )
 
     # Helper Methods
@@ -180,7 +183,7 @@ class ComposeAction(ActionBase):
             `self._result` if needed.
         """
         status = self.result_status(result)
-        self.log.debug(f"Task `{task.action}` {status}", result)
+        self.log.debug(f"Task `{task.action}` {status}", result=result)
         self.append_result(task, action, result)
         if (
             self.has_changed(task, action, result)
@@ -201,7 +204,7 @@ class ComposeAction(ActionBase):
         The relevant `Task`_, `ActionBase`_ and `result` `dict`_ are provided
         to allow realizing subclasses to make specific decisions.
         """
-        self.log.error(f"Task `{task.action}` FAILED", result)
+        self.log.error(f"Task `{task.action}` FAILED", result=result)
 
         raise ComposedActionFailedError(
             result.get("msg", ""), task.action, action, result
@@ -309,14 +312,14 @@ class ComposeAction(ActionBase):
         )
 
         if action is None:
-            self.log.debug(f"Composing task `{name}`...", task_args)
+            self.log.debug(f"Composing task `{name}`...", task_args=task_args)
             result = self._execute_module(
                 name,
                 module_args=task_args,
                 task_vars=task_vars,
             )
         else:
-            self.log.debug(f"Composing action `{name}`...", task_args)
+            self.log.debug(f"Composing action `{name}`...", task_args=task_args)
             result = action.run(task_vars=task_vars)
 
         if result.get("failed", False):
