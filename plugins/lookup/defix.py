@@ -5,7 +5,7 @@ from ansible.plugins.lookup import LookupBase
 
 import nansi.logging
 
-LOG = logging.getLogger('nansi.plugins.lookup.defix')
+LOG = logging.getLogger(__name__)
 
 class LookupModule(LookupBase):
     def run(self, terms, variables=None, **kwargs):
@@ -13,7 +13,7 @@ class LookupModule(LookupBase):
 
         if variables is None:
             raise AnsibleError(
-                f"Received `variables=None`, not nothin' to be done!"
+                "Received `variables=None`, not nothin' to be done!"
             )
 
         omit = kwargs.get('omit', tuple())
