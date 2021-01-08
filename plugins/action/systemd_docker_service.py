@@ -15,6 +15,7 @@ from nansi.support.systemd import file_content_for
 
 LOG = logging.getLogger(__name__)
 
+
 class Config(OpenArgsBase):
     @classmethod
     def cast(cls, parent, value):
@@ -25,6 +26,7 @@ class Config(OpenArgsBase):
                 return TemplateConfig.cast(parent, value["template"])
         return value
 
+
 class FileConfig(Config):
     @classmethod
     def cast(cls, parent, value):
@@ -34,8 +36,8 @@ class FileConfig(Config):
             return cls(value, parent.task_vars)
         return value
 
-    src     = Arg(Optional[str])
-    dest    = Arg(Optional[str])
+    src = Arg(Optional[str])
+    dest = Arg(Optional[str])
 
     def task_args(self, config_dir: str) -> Dict[str, Any]:
         dest = self.dest
@@ -44,45 +46,51 @@ class FileConfig(Config):
         if not isabs(dest):
             dest = join(config_dir, dest)
         return {
-            k: v for k, v in
-            dict(
-                src     = self.src,
-                dest    = dest,
+            k: v
+            for k, v in dict(
+                src=self.src,
+                dest=dest,
                 **self.extras(),
             ).items()
             if v is not None
         }
 
+
 class CopyConfig(FileConfig):
     action = "copy"
+
 
 class TemplateConfig(FileConfig):
     action = "template"
 
+
 class SystemdDockerService(ArgsBase):
 
-    docker_service  = Arg(str, "docker.service")
-    docker_exe      = Arg(str, "/usr/bin/docker")
-    file_dir        = Arg(str, "/etc/systemd/system")
-    configs_dir     = Arg(str, "/usr/local/etc")
+    docker_service = Arg(str, "docker.service")
+    docker_exe = Arg(str, "/usr/bin/docker")
+    file_dir = Arg(str, "/etc/systemd/system")
+    configs_dir = Arg(str, "/usr/local/etc")
 
-    state           = Arg(Literal['present', 'absent'], 'present')
-    name            = Arg(str)
-    description     = Arg(str)
-    tag             = Arg(str)
-    opts            = Arg(Optional[TOpts])
-    config          = Arg.zero_or_more(Config, item_cast=Config.cast)
+    state = Arg(Literal["present", "absent"], "present")
+    name = Arg(str)
+    description = Arg(str)
+    tag = Arg(str)
+    opts = Arg(Optional[TOpts])
+    config = Arg.zero_or_more(Config, item_cast=Config.cast)
 
     @property
     def exec_start(self) -> str:
-        return shlex.join([
-            self.docker_exe,
-            "run",
-            "--name", "%n",
-            "--rm",
-            *iter_opts(self.opts, subs=dict(config=self.config_dir)),
-            self.tag,
-        ])
+        return shlex.join(
+            [
+                self.docker_exe,
+                "run",
+                "--name",
+                "%n",
+                "--rm",
+                *iter_opts(self.opts, subs=dict(config=self.config_dir)),
+                self.tag,
+            ]
+        )
 
     def volumes(self):
         # pylint: disable=unsupported-membership-test,unsubscriptable-object
@@ -115,7 +123,7 @@ class SystemdDockerService(ArgsBase):
             },
             "Install": {
                 "WantedBy": "multi-user.target",
-            }
+            },
         }
 
     @property
@@ -134,22 +142,24 @@ class SystemdDockerService(ArgsBase):
     def config_dir(self) -> str:
         return connect(self.configs_dir, self.name)
 
-class ActionModule(ComposeAction):
 
+class ActionModule(ComposeAction):
     def append_result(self, task, action, result):
         if "results" not in self._result:
             self._result["results"] = []
-        self._result["results"].append({
-            'task': task.action,
-            'args': task.args,
-            'status': self.result_status(result),
-        })
+        self._result["results"].append(
+            {
+                "task": task.action,
+                "args": task.args,
+                "status": self.result_status(result),
+            }
+        )
 
     def state_present(self, service: SystemdDockerService):
         if len(service.config) > 0:
             self.tasks.file(
-                path    = service.config_dir,
-                state   = "directory",
+                path=service.config_dir,
+                state="directory",
             )
 
             for config in service.config:
@@ -158,39 +168,42 @@ class ActionModule(ComposeAction):
                 )
 
         unit_file = self.tasks.copy(
-            dest    = service.file_path,
-            content = service.file_content,
+            dest=service.file_path,
+            content=service.file_content,
         )
 
         self.tasks.systemd(
-            name        = service.filename,
-            state       = ("restarted" if self._result.get("changed", False)
-                            else "started"),
-            enabled     = True,
-            daemon_reload   = unit_file.get("changed", False),
+            name=service.filename,
+            state=(
+                "restarted" if self._result.get("changed", False) else "started"
+            ),
+            enabled=True,
+            daemon_reload=unit_file.get("changed", False),
         )
 
     def state_absent(self, service: SystemdDockerService):
         self.tasks.systemd(
-            name        = service.filename,
-            state       = 'stopped',
-            enabled     = False,
+            name=service.filename,
+            state="stopped",
+            enabled=False,
         )
-        self.tasks.file(path=service.file_path, state='absent')
+        self.tasks.file(path=service.file_path, state="absent")
 
         for volume in service.volumes():
-            self.tasks.command(argv=[
-                service.docker_bin,
-                "volume",
-                "rm",
-                volume,
-            ])
+            self.tasks.command(
+                argv=[
+                    service.docker_bin,
+                    "volume",
+                    "rm",
+                    volume,
+                ]
+            )
 
         # NOTE  Persue independent files? Require they're all under config?
         #       That's probably better...
         self.tasks.file(
-            path    = service.config_dir,
-            state   = "absent",
+            path=service.config_dir,
+            state="absent",
         )
 
     def compose(self):

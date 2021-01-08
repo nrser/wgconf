@@ -14,13 +14,14 @@ def role_path(rel_path):
     )
 
 
-class Args(OpenArgsBase):
+class CommonArgs:
     config_dir = Arg(str, "/etc/nginx")
     run_dir = Arg(str, "/run")
     log_dir = Arg(str, "/var/log/nginx")
     user = Arg(str, "www-data")
     proxy_websockets = Arg(bool, False)
 
+class Args(OpenArgsBase, CommonArgs):
     src = Arg(str, role_path("templates/nginx.conf"))
     dest = Arg(str, methodcaller("default_dest"))
 
