@@ -1,0 +1,17 @@
+[MESSAGES CONTROL]
+
+# 5 is too few IMHO
+max-args=8
+
+[DESIGN]
+max-parents=12
+
+disable=unused-argument,
+        wildcard-import,
+        unused-wildcard-import,
+        missing-function-docstring,
+        logging-fstring-interpolation,
+        missing-class-docstring,
+        trailing-whitespace,
+        missing-module-docstring,
+        invalid-name
