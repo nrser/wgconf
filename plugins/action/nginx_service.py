@@ -20,7 +20,7 @@ class Args(OpenArgsBase, CommonArgs):
     )
     enabled = Arg(bool, True)
     validate = Arg(
-        bool, lambda self: self.task_vars.get("nginx_service_validate", True)
+        bool, lambda self, _: self.task_vars.get("nginx_service_validate", True)
     )
 
 

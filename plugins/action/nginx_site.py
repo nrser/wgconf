@@ -2,10 +2,9 @@ from __future__ import annotations
 from os.path import join
 from collections import namedtuple
 from typing import *
-from operator import methodcaller
 
 from nansi.plugins.action.compose import ComposeAction
-from nansi.plugins.action.args import Arg, ArgsBase
+from nansi.plugins.action.args import Arg, ArgsBase, Default
 
 # pylint: disable=import-error,no-name-in-module
 from ansible_collections.nrser.nansi.plugins.action.nginx_config import (
@@ -14,7 +13,7 @@ from ansible_collections.nrser.nansi.plugins.action.nginx_config import (
 )
 
 
-def cast_server_names(args: Args, value: T) -> Union[List[str], T]:
+def cast_server_names(args: Args, _name, value: T) -> Union[List[str], T]:
     """
     If `value` is a `str`, splits it into a list of `str`. All other `value`
     are returned as-is.
@@ -57,7 +56,7 @@ class Args(ArgsBase, CommonArgs):
     state = Arg(STATE_TYPE, "enabled")
     server_names = Arg(
         List[str],
-        default=methodcaller("_default_server_name"),
+        default=Default.from_self(),
         cast=cast_server_names,
     )
 
@@ -66,8 +65,8 @@ class Args(ArgsBase, CommonArgs):
     http = Arg(Union[bool, STATE_TYPE, Literal["redirect"]], True)
     https = Arg(Union[bool, STATE_TYPE], True)
 
-    http_template = Arg(str, role_path("templates/http.conf"))
-    https_template = Arg(str, role_path("templates/https.conf"))
+    http_template = Arg(str, str(role_path("templates/http.conf")))
+    https_template = Arg(str, str(role_path("templates/https.conf")))
 
     lets_encrypt = Arg(bool, False)
 
@@ -77,9 +76,9 @@ class Args(ArgsBase, CommonArgs):
     proxy_path = Arg(str, "/")
     proxy_scheme = Arg(str, "http")
     proxy_host = Arg(str, "localhost")
-    proxy_port = Arg(Union[None, int, str], methodcaller("_default_proxy_port"))
+    proxy_port = Arg(Union[None, int, str], Default.from_self())
 
-    proxy_dest = Arg(str, methodcaller("_default_proxy_dest"))
+    proxy_dest = Arg(str, Default.from_self())
 
     client_max_body_size = Arg(str, "1m")
 
@@ -95,13 +94,13 @@ class Args(ArgsBase, CommonArgs):
     def server_name(self) -> str:
         return " ".join(self.server_names)
 
-    def _default_server_names(self) -> List[str]:
+    def default_server_names(self) -> List[str]:
         return [f"{self.name}.{self.task_vars['inventory_hostname']}"]
 
-    def _default_proxy_port(self) -> Optional[int]:
+    def default_proxy_port(self) -> Optional[int]:
         return 8888 if self.proxy_host == "localhost" else None
 
-    def _default_proxy_dest(self) -> str:
+    def default_proxy_dest(self) -> str:
         netloc = (
             self.proxy_host
             if self.proxy_port is None

@@ -23,7 +23,7 @@ def os_fact_format(string: str, ansible_facts, **extras) -> str:
 
 def os_fact_formatter(*extra_attrs):
     # pylint: disable=redefined-outer-name
-    def cast(args, string: str) -> str:
+    def cast(args, _name, string: str) -> str:
         return os_fact_format(
             string,
             args.task_vars["ansible_facts"],
@@ -42,10 +42,22 @@ def attr_formatter(*names):
     >>> Args({"name": "blah"}).path
     'blah.txt'
     """
-    return lambda args, string: string.format(
+    return lambda args, _name, string: string.format(
         **{name: getattr(args, name) for name in names}
     )
 
+
+class Default:
+    @staticmethod
+    def from_self(template="default_{name}"):
+        def get_default(args, name):
+            attr_name = template.format(name, name=name)
+            attr_value = getattr(args, attr_name)
+            # pylint: disable=isinstance-second-argument-not-valid-type
+            if isinstance(attr_value, Callable):
+                return attr_value()
+            return attr_value
+        return get_default
 
 class Arg(prop):
     # Don't complain about `typing.cast` override
@@ -58,11 +70,22 @@ class Arg(prop):
             and isinstance(arg_type, type)
             and issubclass(arg_type, ArgsBase)
         ):
-            return lambda args, values: arg_type(values, args.task_vars)
+            return lambda args, name, values: arg_type(values, args.task_vars)
         return cast
 
-    def __init__(self, arg_type, default=None, cast=None, alias=None):
-        super().__init__(arg_type, default, Arg.auto_cast_args(arg_type, cast))
+    def __init__(
+        self,
+        arg_type,
+        default=None,
+        *,
+        cast=None,
+        alias=None
+    ):
+        super().__init__(
+            arg_type,
+            default,
+            cast=Arg.auto_cast_args(arg_type, cast)
+        )
         self.alias = alias
 
     def iter_aliases(self):
@@ -76,29 +99,29 @@ class Arg(prop):
     def one_or_more(cls, item_type, default=None, item_cast=None, alias=None):
         item_cast = Arg.auto_cast_args(item_type, item_cast)
 
-        def cast(instance, value):
+        def cast(instance, name, value):
             if not isinstance(value, list):
                 value = [value]
             if item_cast is None:
                 return value
-            return [item_cast(instance, item) for item in value]
+            return [item_cast(instance, name, item) for item in value]
 
-        return cls(List[item_type], default=default, cast=cast, alias=alias)
+        return cls(List[item_type], default, cast=cast, alias=alias)
 
     @classmethod
     def zero_or_more(cls, item_type, default=None, item_cast=None, alias=None):
         item_cast = Arg.auto_cast_args(item_type, item_cast)
 
-        def cast(instance, value):
+        def cast(instance, name, value):
             if value is None:
                 return []
             if not isinstance(value, list):
                 value = [value]
             if item_cast is None:
                 return value
-            return [item_cast(instance, item) for item in value]
+            return [item_cast(instance, name, item) for item in value]
 
-        return cls(List[item_type], default=default, cast=cast, alias=alias)
+        return cls(List[item_type], default, cast=cast, alias=alias)
 
 
 class ArgsBase(Proper):
@@ -246,5 +269,4 @@ class OpenArgsBase(ArgsBase, collections.abc.Mapping):
 if __name__ == "__main__":
     import doctest
 
-    logging.basicConfig(level=logging.DEBUG)
     doctest.testmod()

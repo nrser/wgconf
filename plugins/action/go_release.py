@@ -6,7 +6,7 @@ from nansi.plugins.action.compose import ComposeAction
 from nansi.plugins.action.args import Arg, ArgsBase, attr_formatter
 from nansi.os_resolve import os_map_resolve
 
-from ansible_collections.nrser.nansi.plugins.action import release # pylint: disable=import-error,no-name-in-module
+from ansible_collections.nrser.nansi.plugins.action import release # pylint: disable=import-error,no-name-in-module,wrong-import-order
 
 class Args(ArgsBase):
     version     = Arg( str )
@@ -24,7 +24,7 @@ class Args(ArgsBase):
                                 "{name}.sh",
                                 cast=attr_formatter("name") )
     profile_path        = Arg(  str,
-                                lambda self: path.join(
+                                lambda self, _name: path.join(
                                     self.profile_dir,
                                     self.profile_basename,
                                 )

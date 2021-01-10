@@ -20,7 +20,7 @@ from nansi.support.systemd import file_content_for
 LOG = logging.getLogger(__name__)
 
 
-def cast_url(args, value):
+def cast_url(args, _name, value):
     if isinstance(value, list):
         value = connect(*value)
     return os_fact_format(
@@ -31,7 +31,7 @@ def cast_url(args, value):
 
 class Exe(ArgsBase):
     @classmethod
-    def cast(cls, parent, value):
+    def cast(cls, parent, _name, value):
         if isinstance(value, str):
             return cls(
                 dict(filename=basename(value), src=value),
@@ -39,7 +39,6 @@ class Exe(ArgsBase):
             )
         elif isinstance(value, abc.Mapping):
             return cls(value, parent.task_vars)
-        LOG.warning(f"Bad type! {type(value)}", dict(value=value))
         return value
 
     filename    = Arg(str)
@@ -71,7 +70,7 @@ class Args(ArgsBase):
     checksum    = Arg(Optional[str])
     exe         = Arg.zero_or_more(Exe, item_cast=Exe.cast)
     args        = Arg(Optional[List[str]])
-    systemd     = Arg(Dict[str, Dict[str, str]], lambda _: {})
+    systemd     = Arg(Dict[str, Dict[str, str]], lambda _, _: {})
 
     def __init__(self, task_args, task_vars):
         super().__init__(task_args, task_vars)

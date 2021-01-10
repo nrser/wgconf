@@ -5,13 +5,13 @@ from typing import *
 from nansi.plugins.action.compose import ComposeAction
 from nansi.plugins.action.args import Arg, OpenArgsBase, os_fact_format
 
-# pylint: disable=no-name-in-module,import-error
+# pylint: disable=no-name-in-module,import-error,wrong-import-order
 from ansible_collections.nrser.nansi.plugins.action.apt_version import (
     PackageArgs,
 )
 
 
-def cast_name(args, value):
+def cast_name(args, _name, value):
     if isinstance(value, str):
         return value
     if isinstance(value, abc.Mapping):
@@ -19,13 +19,13 @@ def cast_name(args, value):
     return value
 
 
-def cast_key_id(args, value):
+def cast_key_id(args, _name, value):
     if value is None:
         return None
     return value.replace(" ", "")
 
 
-def cast_respoitory_repo(args, value):
+def cast_respoitory_repo(args, _name, value):
     if value is None:
         return None
     return os_fact_format(value, args.task_vars["ansible_facts"])

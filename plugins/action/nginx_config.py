@@ -2,29 +2,46 @@ from __future__ import annotations
 from typing import *
 from pathlib import Path
 import os.path
-from operator import methodcaller
+
+import yaml
 
 from nansi.plugins.action.compose import ComposeAction
-from nansi.plugins.action.args import Arg, OpenArgsBase
+from nansi.plugins.action.args import Arg, OpenArgsBase, Default
 
 
 def role_path(rel_path):
-    return str(
-        Path(__file__).parent.parent.parent / "roles" / "nginx" / rel_path
-    )
+    return Path(__file__).parent.parent.parent / "roles" / "nginx" / rel_path
 
+# *&$%^&^ do I really have to do this to make it clean..?
+class Defaults:
+    @staticmethod
+    def all():
+        if hasattr(Defaults, "_all"):
+            return getattr(Defaults, "_all")
+        with role_path("defaults/main.yaml").open("r") as file:
+            defaults = yaml.safe_load(file)
+        setattr(Defaults, "_all", defaults)
+        return defaults
+
+    @staticmethod
+    def get(name: str):
+        return Defaults.all()[f"nginx_{name}"]
+
+
+def role_default(args, name):
+    return Defaults.get(name)
 
 class CommonArgs:
-    config_dir = Arg(str, "/etc/nginx")
-    run_dir = Arg(str, "/run")
-    log_dir = Arg(str, "/var/log/nginx")
-    user = Arg(str, "www-data")
-    proxy_websockets = Arg(bool, False)
-    exe = Arg(str, "/usr/sbin/nginx")
+    config_dir = Arg(str, role_default)
+    run_dir = Arg(str, role_default)
+    log_dir = Arg(str, role_default)
+    exe = Arg(str, role_default)
+    user = Arg(str, role_default)
+    proxy_websockets = Arg(bool, role_default)
 
 class Args(OpenArgsBase, CommonArgs):
-    src = Arg(str, role_path("templates/nginx.conf"))
-    dest = Arg(str, methodcaller("default_dest"))
+    src = Arg(str, str(role_path("templates/nginx.conf")))
+    dest = Arg(str, Default.from_self())
 
     def default_dest(self):
         return os.path.join(self.config_dir, "nginx.conf")

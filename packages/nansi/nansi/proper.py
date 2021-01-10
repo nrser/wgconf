@@ -10,13 +10,14 @@ import logging
 
 from typeguard import check_type
 
-from nansi.utils.collections import need
 
 LOG = log = logging.getLogger(__name__)
 
 
 class PropTypeError(TypeError):
-    def __init__(self, message, instance, name, type, value, context=None):
+    def __init__(
+        self, message, value, owner, name, type, instance, context=None
+    ):
         super().__init__(message)
         self.instance = instance
         self.type = type
@@ -33,7 +34,7 @@ class PropInitError(ValueError):
         self.value = value
 
 
-class prop(property):
+class prop:
     """
     Extension of the built-in `property` that adds support for:
 
@@ -44,120 +45,144 @@ class prop(property):
     Designed to be used with classes extending `Proper`.
     """
 
-    def __init__(self, type, default=None, cast=None):
-        super().__init__(self._get, self._set)
+    def __init__(
+        self,
+        type,
+        default=None,
+        *,
+        cast=None,
+        default_value=None,
+        get_default=None,
+    ):
+        self._type = type
 
-        self.type = type
-        self.default = default
-        self.cast = cast
+        if default is not None:
+            if callable(default):
+                get_default = default
+            else:
+                default_value = default
 
-    def _name(self, instance) -> str:
-        return need(
-            lambda name: getattr(instance.__class__, name, None) is self,
-            dir(instance.__class__),
+        self._default_value = default_value
+        self._get_default = get_default
+
+        self._cast = cast
+
+    def __set_name__(self, owner, name):
+        # pylint: disable=attribute-defined-outside-init
+        self._owner = owner
+        self._name = name
+        self._attr_name = "_" + name
+
+    def __get__(self, instance, owner=None):
+        if instance is None:
+            return self
+
+        # Need this to handle defaults that reference other defaults
+        if not hasattr(instance, self.attr_name):
+            self.set_to_default(instance, _context="get")
+
+        return getattr(instance, self.attr_name)
+
+    def __set__(self, instance, value) -> None:
+        value = self.cast(instance, value)
+
+        self.check_type(
+            value,
+            _instance=instance,
+            _context="__set__",
+            _message=("Failed to set {name}, given a {value_type}: {value}"),
         )
 
-    def _names(self, instance) -> str:
-        name = self._name(instance)
-        return (name, "_" + name)
+        setattr(instance, self.attr_name, value)
 
-    def _check_type(self, instance, name, value, context, message):
+    def __delete__(self, instance) -> None:
+        self.set_to_default(instance, _context="__delete__")
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def attr_name(self):
+        return self._attr_name
+
+    @property
+    def owner(self):
+        return self._owner
+
+    @property
+    def full_name(self) -> str:
+        return ".".join((self.owner.__module__, self.owner.__name__, self.name))
+
+    @property
+    def type(self):
+        return self._type
+
+    def check_type(
+        self, value, *, _instance=None, _message=None, _context=None
+    ):
         try:
-            check_type("", value, self.type)
+            check_type("", value, self._type)
         except TypeError:
-            if callable(message):
-                message = message()
+            if _message is None:
+                _message = (
+                    "`{name}` check failed for value of type "
+                    "{value_type}: {value}"
+                )
+            message = _message.format(
+                name=self.__str__(_instance),
+                # type=self.type,
+                value_type=type(value),
+                value=repr(value),
+            )
             # pylint: disable=raise-missing-from
             raise PropTypeError(
                 message,
-                instance=instance,
-                name=name,
-                type=self.type,
                 value=value,
-                context=context,
+                owner=self.owner,
+                name=self.name,
+                type=self.type,
+                instance=_instance,
+                context=_context,
             )
 
-    def _get_default(self, instance):
-        default = self.default
-        if callable(default):
-            default = default(instance)
-        return default
+    def default(self, instance):
+        if self._get_default is not None:
+            return self._get_default(instance, self.name)
+        return self._default_value
 
-    def _try_cast(self, instance, value):
-        if self.cast is not None:
-            # try:
-            return self.cast(instance, value)
-            #
-            # This is hard as hell to track down if `cast` is being used as a
-            # `T -> T` transform!?!?!
-            #
-            # pylint: disable=broad-except
-            # except Exception:
-            #     log.error(
-            #         f"prop {self.__str__(instance)} raised casting value "
-            #         + repr(value),
-            #         exc_info=exc_info(),
-            #     )
+    def set_to_default(self, instance, *, _context="set_to_default") -> None:
+        default = self.default(instance)
+        value = self.cast(instance, default)
+
+        self.check_type(
+            value,
+            _instance=instance,
+            _context=_context,
+            _message=(
+                "Failed to set {name} to default, got a {value_type}: {value}"
+            ),
+        )
+
+        setattr(instance, self.attr_name, value)
+
+    def cast(self, instance, value):
+        if self._cast is not None:
+            return self._cast(instance, self.name, value)
         return value
-
-    def _get(self, instance):
-        _name, attr_name = self._names(instance)
-
-        # Need this to handle defaults that reference other defaults
-        if not hasattr(instance, attr_name):
-            self._set_to_default(instance, context="get")
-
-        return getattr(instance, attr_name)
-
-    def _set(self, instance, value) -> None:
-        name, attr_name = self._names(instance)
-
-        value = self._try_cast(instance, value)
-
-        self._check_type(
-            instance,
-            name,
-            value,
-            "set",
-            lambda: (
-                f"{instance.__class__.__name__}#{name} must be of typing "
-                + f"{self.type}, given a {type(value)}: {repr(value)}"
-            ),
-        )
-
-        setattr(instance, attr_name, value)
-
-    def _set_to_default(
-        self, instance, context: str = "set_to_default"
-    ) -> None:
-        name, attr_name = self._names(instance)
-
-        # Since if default behaves different than given value it's weird in
-        # practice
-        value = self._try_cast(instance, self._get_default(instance))
-
-        self._check_type(
-            instance,
-            name,
-            value,
-            context,
-            lambda: (
-                f"{instance.__class__.__name__}#{name} default does not "
-                f"satisfy type {self.type}, given a "
-                f"{type(value)}: {repr(value)}"
-            ),
-        )
-
-        setattr(instance, attr_name, value)
-
-    def _del(self, instance) -> None:
-        self._set_to_default(instance, "del")
 
     def __str__(self, instance=None) -> str:
         if instance is None:
-            return f"???.???: {self.type}"
+            name = self.full_name
         else:
-            return f"{instance.__class__}.{self._name(instance)}: {self.type}"
+            name = ".".join(
+                (
+                    instance.__class__.__module__,
+                    instance.__class__.__name__,
+                    self.name,
+                )
+            )
+        return f"{name}: {self.type}"
 
 
 class Proper:
@@ -195,15 +220,15 @@ class Proper:
                     name=name,
                     value=value,
                 )
-            props[name]._set(self, value)
+            props[name].__set__(self, value)
             del props[name]
 
         for name, p in props.items():
             # Since setting a prop to it's default may cause other props to be
             # set to their default we check that the attribute is missing before
             # setting
-            if not hasattr(self, f"_{name}"):
-                p._set_to_default(self)
+            if not hasattr(self, p.attr_name):
+                p.set_to_default(self)
 
     def to_dict(self) -> Dict[str, Any]:
         return {
