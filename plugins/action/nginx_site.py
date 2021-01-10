@@ -4,16 +4,16 @@ from collections import namedtuple
 from typing import *
 
 from nansi.plugins.action.compose import ComposeAction
-from nansi.plugins.action.args import Arg, ArgsBase, Default
+from nansi.plugins.action.args import Arg, ArgsBase
 
-# pylint: disable=import-error,no-name-in-module
+# pylint: disable=import-error,no-name-in-module,wrong-import-order
 from ansible_collections.nrser.nansi.plugins.action.nginx_config import (
     role_path,
     CommonArgs,
 )
 
 
-def cast_server_names(args: Args, _name, value: T) -> Union[List[str], T]:
+def cast_server_names(args: Args, _, value: T) -> Union[List[str], T]:
     """
     If `value` is a `str`, splits it into a list of `str`. All other `value`
     are returned as-is.
@@ -56,7 +56,7 @@ class Args(ArgsBase, CommonArgs):
     state = Arg(STATE_TYPE, "enabled")
     server_names = Arg(
         List[str],
-        default=Default.from_self(),
+        lambda self, _: self.default_server_names(),
         cast=cast_server_names,
     )
 
@@ -76,9 +76,10 @@ class Args(ArgsBase, CommonArgs):
     proxy_path = Arg(str, "/")
     proxy_scheme = Arg(str, "http")
     proxy_host = Arg(str, "localhost")
-    proxy_port = Arg(Union[None, int, str], Default.from_self())
-
-    proxy_dest = Arg(str, Default.from_self())
+    proxy_port = Arg(
+        Union[None, int, str], lambda self, _: self.default_proxy_port()
+    )
+    proxy_dest = Arg(str, lambda self, _: self.default_proxy_dest())
 
     client_max_body_size = Arg(str, "1m")
 

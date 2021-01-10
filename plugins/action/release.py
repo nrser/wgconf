@@ -20,7 +20,7 @@ from nansi.support.systemd import file_content_for
 LOG = logging.getLogger(__name__)
 
 
-def cast_url(args, _name, value):
+def cast_url(args, _, value):
     if isinstance(value, list):
         value = connect(*value)
     return os_fact_format(
@@ -31,14 +31,14 @@ def cast_url(args, _name, value):
 
 class Exe(ArgsBase):
     @classmethod
-    def cast(cls, parent, _name, value):
+    def cast(cls, args, _, value):
         if isinstance(value, str):
             return cls(
                 dict(filename=basename(value), src=value),
-                parent.task_vars
+                args.task_vars
             )
-        elif isinstance(value, abc.Mapping):
-            return cls(value, parent.task_vars)
+        if isinstance(value, abc.Mapping):
+            return cls(value, args.task_vars)
         return value
 
     filename    = Arg(str)
@@ -62,7 +62,7 @@ class Args(ArgsBase):
     systemd_dir = Arg(str, "/etc/systemd/system")
 
     name        = Arg(str)
-    description = Arg(str, attrgetter('_default_description'))
+    description = Arg(str, lambda self, *_: self.default_description)
     version     = Arg(str)
     service     = Arg(bool, False)
     user        = Arg(Optional[str])
@@ -70,7 +70,7 @@ class Args(ArgsBase):
     checksum    = Arg(Optional[str])
     exe         = Arg.zero_or_more(Exe, item_cast=Exe.cast)
     args        = Arg(Optional[List[str]])
-    systemd     = Arg(Dict[str, Dict[str, str]], lambda _, _: {})
+    systemd     = Arg(Dict[str, Dict[str, str]], lambda *_: {})
 
     def __init__(self, task_args, task_vars):
         super().__init__(task_args, task_vars)
@@ -89,7 +89,7 @@ class Args(ArgsBase):
                 )
 
     @property
-    def _default_description(self):
+    def default_description(self):
         return f"{self.name} {self.version} release from {self.url}"
 
     @property

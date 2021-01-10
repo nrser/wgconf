@@ -1,7 +1,7 @@
 from typing import *
 from unittest import TestCase, main
 
-from nansi.proper import prop, Proper
+from nansi.proper import Prop, Proper
 
 from test_helpers import *
 
@@ -10,30 +10,30 @@ __DIR__ = get__DIR__(__file__)
 class TestProper(TestCase):
     def test_name(self):
         class A(Proper):
-            x = prop(int)
+            x = Prop(int)
 
         self.assertEqual(A.x.name, "x")
 
     def test_owner(self):
         class A(Proper):
-            x = prop(int)
+            x = Prop(int)
 
         self.assertIs(A.x.owner, A)
 
     def test_full_name(self):
         class A(Proper):
-            x = prop(int)
+            x = Prop(int)
 
         self.assertEqual(A.x.full_name, f"{__name__}.A.x")
 
     def test_str(self):
         class A(Proper):
-            x = prop(int)
+            x = Prop(int)
 
         self.assertEqual(str(A.x), f"{__name__}.A.x: {int}")
 
         class B(A):
-            y = prop(int)
+            y = Prop(int)
 
         b = B(x=1, y=2)
 

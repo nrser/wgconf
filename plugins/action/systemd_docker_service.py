@@ -18,22 +18,22 @@ LOG = logging.getLogger(__name__)
 
 class Config(OpenArgsBase):
     @classmethod
-    def cast(cls, parent, name, value):
+    def cast(cls, args, arg, value):
         if isinstance(value, abc.Mapping):
             if "copy" in value:
-                return CopyConfig.cast(parent, name, value["copy"])
+                return CopyConfig.cast(args, arg, value["copy"])
             elif "template" in value:
-                return TemplateConfig.cast(parent, name, value["template"])
+                return TemplateConfig.cast(args, arg, value["template"])
         return value
 
 
 class FileConfig(Config):
     @classmethod
-    def cast(cls, parent, _name, value):
+    def cast(cls, args, _, value):
         if isinstance(value, str):
-            return cls(dict(src=value), parent.task_vars)
+            return cls(dict(src=value), args.task_vars)
         elif isinstance(value, abc.Mapping):
-            return cls(value, parent.task_vars)
+            return cls(value, args.task_vars)
         return value
 
     src = Arg(Optional[str])

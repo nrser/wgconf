@@ -24,7 +24,7 @@ class Args(ArgsBase):
                                 "{name}.sh",
                                 cast=attr_formatter("name") )
     profile_path        = Arg(  str,
-                                lambda self, _name: path.join(
+                                lambda self, _: path.join(
                                     self.profile_dir,
                                     self.profile_basename,
                                 )

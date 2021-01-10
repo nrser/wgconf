@@ -2,27 +2,24 @@
 Typed properties, with optional defaults and cast functions.
 """
 
-# pylint: disable=redefined-builtin,invalid-name,redefined-outer-name
-
 from __future__ import annotations
 from typing import *
 import logging
 
 from typeguard import check_type
 
+# pylint: disable=redefined-builtin,invalid-name,redefined-outer-name
 
 LOG = log = logging.getLogger(__name__)
 
+TValue = TypeVar("TValue")
+TInput = TypeVar("TInput")
 
 class PropTypeError(TypeError):
-    def __init__(
-        self, message, value, owner, name, type, instance, context=None
-    ):
+    def __init__(self, message, value, instance, prop, context=None):
         super().__init__(message)
         self.instance = instance
-        self.type = type
-        self.name = name
-        self.value = value
+        self.prop = prop
         self.context = context
 
 
@@ -34,7 +31,7 @@ class PropInitError(ValueError):
         self.value = value
 
 
-class prop:
+class Prop(Generic[TValue, TInput]):
     """
     Extension of the built-in `property` that adds support for:
 
@@ -45,14 +42,19 @@ class prop:
     Designed to be used with classes extending `Proper`.
     """
 
+    _type: Type[TValue]
+    _default_value: Optional[TInput]
+    _get_default: Optional[Callable[[Any, Prop, TInput], TValue]]
+    _cast: Optional[Callable[[Any, Prop, TInput], TValue]]
+
     def __init__(
         self,
-        type,
-        default=None,
+        type: Type[TValue],
+        default: Union[None, TInput, Callable[[Any, Prop, TInput], TValue]]=None,
         *,
-        cast=None,
-        default_value=None,
-        get_default=None,
+        cast: Optional[Callable[[Any, Prop, TInput], TValue]]=None,
+        default_value: Optional[TInput]=None,
+        get_default: Optional[Callable[[Any, Prop], TInput]]=None,
     ):
         self._type = type
 
@@ -79,7 +81,7 @@ class prop:
 
         # Need this to handle defaults that reference other defaults
         if not hasattr(instance, self.attr_name):
-            self.set_to_default(instance, _context="get")
+            self.set_to_default(instance, context="__get__")
 
         return getattr(instance, self.attr_name)
 
@@ -88,26 +90,26 @@ class prop:
 
         self.check_type(
             value,
-            _instance=instance,
-            _context="__set__",
-            _message=("Failed to set {name}, given a {value_type}: {value}"),
+            instance=instance,
+            context="__set__",
+            message=("Failed to set {name}, given a {value_type}: {value}"),
         )
 
         setattr(instance, self.attr_name, value)
 
     def __delete__(self, instance) -> None:
-        self.set_to_default(instance, _context="__delete__")
+        self.set_to_default(instance, context="__delete__")
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self._name
 
     @property
-    def attr_name(self):
+    def attr_name(self) -> str:
         return self._attr_name
 
     @property
-    def owner(self):
+    def owner(self) -> Type:
         return self._owner
 
     @property
@@ -115,51 +117,52 @@ class prop:
         return ".".join((self.owner.__module__, self.owner.__name__, self.name))
 
     @property
-    def type(self):
+    def type(self) -> Type[TValue]:
         return self._type
 
     def check_type(
-        self, value, *, _instance=None, _message=None, _context=None
+        self,
+        value: Any,
+        *,
+        instance=None,
+        message=None,
+        context=None
     ):
         try:
             check_type("", value, self._type)
         except TypeError:
-            if _message is None:
-                _message = (
+            if message is None:
+                message = (
                     "`{name}` check failed for value of type "
                     "{value_type}: {value}"
                 )
-            message = _message.format(
-                name=self.__str__(_instance),
-                # type=self.type,
-                value_type=type(value),
-                value=repr(value),
-            )
             # pylint: disable=raise-missing-from
             raise PropTypeError(
-                message,
+                message.format(
+                    name=self.__str__(instance),
+                    value_type=type(value),
+                    value=repr(value),
+                ),
                 value=value,
-                owner=self.owner,
-                name=self.name,
-                type=self.type,
-                instance=_instance,
-                context=_context,
+                prop=self,
+                instance=instance,
+                context=context,
             )
 
     def default(self, instance):
         if self._get_default is not None:
-            return self._get_default(instance, self.name)
+            return self._get_default(instance, self)
         return self._default_value
 
-    def set_to_default(self, instance, *, _context="set_to_default") -> None:
+    def set_to_default(self, instance, *, context="set_to_default") -> None:
         default = self.default(instance)
         value = self.cast(instance, default)
 
         self.check_type(
             value,
-            _instance=instance,
-            _context=_context,
-            _message=(
+            instance=instance,
+            context=context,
+            message=(
                 "Failed to set {name} to default, got a {value_type}: {value}"
             ),
         )
@@ -168,7 +171,7 @@ class prop:
 
     def cast(self, instance, value):
         if self._cast is not None:
-            return self._cast(instance, self.name, value)
+            return self._cast(instance, self, value)
         return value
 
     def __str__(self, instance=None) -> str:
@@ -192,10 +195,10 @@ class Proper:
             raise TypeError(
                 f"Names must be str, given {type(name)}: {repr(name)}"
             )
-        return isinstance(getattr(cls, name, None), prop)
+        return isinstance(getattr(cls, name, None), Prop)
 
     @classmethod
-    def iter_props(cls) -> Generator[Tuple[str, prop], None, None]:
+    def iter_props(cls) -> Generator[Tuple[str, Prop], None, None]:
         for name in dir(cls):
             if cls.is_prop(name):
                 yield (name, getattr(cls, name))
@@ -207,7 +210,7 @@ class Proper:
                 yield name
 
     @classmethod
-    def props(cls) -> Dict[str, prop]:
+    def props(cls) -> Dict[str, Prop]:
         return dict(cls.iter_props())
 
     def __init__(self, **values):
@@ -223,12 +226,12 @@ class Proper:
             props[name].__set__(self, value)
             del props[name]
 
-        for name, p in props.items():
+        for name, prop in props.items():
             # Since setting a prop to it's default may cause other props to be
             # set to their default we check that the attribute is missing before
             # setting
-            if not hasattr(self, p.attr_name):
-                p.set_to_default(self)
+            if not hasattr(self, prop.attr_name):
+                prop.set_to_default(self, context="Proper.__init__")
 
     def to_dict(self) -> Dict[str, Any]:
         return {

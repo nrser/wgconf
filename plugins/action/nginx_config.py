@@ -6,7 +6,7 @@ import os.path
 import yaml
 
 from nansi.plugins.action.compose import ComposeAction
-from nansi.plugins.action.args import Arg, OpenArgsBase, Default
+from nansi.plugins.action.args import Arg, OpenArgsBase
 
 
 def role_path(rel_path):
@@ -28,8 +28,8 @@ class Defaults:
         return Defaults.all()[f"nginx_{name}"]
 
 
-def role_default(args, name):
-    return Defaults.get(name)
+def role_default(args, arg):
+    return Defaults.get(arg.name)
 
 class CommonArgs:
     config_dir = Arg(str, role_default)
@@ -41,7 +41,7 @@ class CommonArgs:
 
 class Args(OpenArgsBase, CommonArgs):
     src = Arg(str, str(role_path("templates/nginx.conf")))
-    dest = Arg(str, Default.from_self())
+    dest = Arg(str, lambda self, _: self.default_dest())
 
     def default_dest(self):
         return os.path.join(self.config_dir, "nginx.conf")

@@ -11,7 +11,7 @@ from ansible_collections.nrser.nansi.plugins.action.apt_version import (
 )
 
 
-def cast_name(args, _name, value):
+def cast_name(args, _, value):
     if isinstance(value, str):
         return value
     if isinstance(value, abc.Mapping):
@@ -19,13 +19,13 @@ def cast_name(args, _name, value):
     return value
 
 
-def cast_key_id(args, _name, value):
+def cast_key_id(args, _, value):
     if value is None:
         return None
     return value.replace(" ", "")
 
 
-def cast_respoitory_repo(args, _name, value):
+def cast_respoitory_repo(args, _, value):
     if value is None:
         return None
     return os_fact_format(value, args.task_vars["ansible_facts"])
