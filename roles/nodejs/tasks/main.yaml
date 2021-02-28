@@ -1,1 +1,0 @@
-- include_tasks: "{{ lookup('os_tasks', role_path + '/tasks/os' ) }}"

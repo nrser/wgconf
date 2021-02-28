@@ -37,7 +37,7 @@ class ActionModule(ComposeAction):
             state = args.state,
             key_url = args.key_url,
             key_id = args.key_id,
-            respoitory_repo = args.repo,
+            repository_repo = args.repo,
         )
 
     def compose(self):

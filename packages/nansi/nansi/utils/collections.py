@@ -13,7 +13,7 @@ TKey        = TypeVar('TKey')
 TValue      = TypeVar('TValue')
 TAlias      = TypeVar('TAlias')
 
-Nope = NewType('Nope', Union[None, Literal[False]])
+Nope = NewType('Nope', Union[None, Literal[False]]) # type: ignore
 
 class NotFoundError(Exception):
     pass
@@ -350,6 +350,16 @@ def csl(iterable: Iterable) -> str:
     "'1', '2', '3'"
     '''
     return ", ".join(map(repr, iterable))
+
+def map_add(map_1, map_2):
+    common_keys = set(map_1).intersection(set(map_2))
+
+    if len(common_keys) != 0:
+        raise ValueError(
+            f"Can not add maps with common keys; shared keys: {common_keys}"
+        )
+
+    return {**map_1, **map_2}
 
 if __name__ == '__main__':
     from pathlib import Path # pylint: disable=unused-import

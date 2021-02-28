@@ -1,4 +1,6 @@
-pg_version: 12
+apt_cache_valid_time: 86400
+
+pg_version: 13
 
 pg_client: true
 pg_contrib: true
@@ -19,5 +21,5 @@ pg_os_conf_dir:
     
 pg_conf_dir: "{{ lookup('os_dig', pg_os_conf_dir) }}"
 
-pg_indent_conf_path: "{{ (pg_conf_dir, 'pg_ident.conf') | path }}"
-pg_hba_conf_path: "{{ (pg_conf_dir, 'pg_hba.conf') | path }}"
+pg_indent_conf_path: "{{ (pg_conf_dir, 'pg_ident.conf') | nrser.nansi.to_path }}"
+pg_hba_conf_path: "{{ (pg_conf_dir, 'pg_hba.conf') | nrser.nansi.to_path }}"

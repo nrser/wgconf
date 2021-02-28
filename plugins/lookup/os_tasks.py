@@ -93,46 +93,25 @@ DOCUMENTATION = """
 
 # pylint: disable=wrong-import-position
 
+from typing import *
 import os
-from functools import reduce
-import re
-from typing import Optional, List, Dict, Any
-import pprint
 import logging
+
+import nansi.logging
 
 from ansible.errors import AnsibleError, AnsibleParserError
 from ansible.plugins.lookup import LookupBase
-from ansible.utils.display import Display
 
-from nansi.logging.display_handler import DisplayHandler
 from nansi.os_resolve import os_file_resolve, OSResolveError
 
-display = Display()
-
-nansi_log = logging.getLogger('nansi')
-nansi_log.setLevel(logging.DEBUG)
-nansi_log.addHandler(DisplayHandler(display))
+LOG = logging.getLogger(__name__)
 
 # Task file extensions we look for, in order.
 TASK_FILE_EXTS = ('yaml', 'yml')
 
-TITLE = f"[os_tasks] Lookup Plugin"
-
-def display_error(error, ansible_facts, base_dir):
-    display.error(TITLE)
-    display.error(error.message)
-    display.error("Base directory:")
-    display.error(f"  {base_dir}")
-    display.error("Searched paths (relative to base directory):")
-    for path in error.tried:
-        display.error(f"  {path}")
-
 class LookupModule(LookupBase):
 
     def run(self, terms, variables: Optional[Dict[str, Any]]=None, **kwargs):
-        display.vv(TITLE)
-        display.vv(f"  @see {__file__}")
-
         if variables is None:
             raise AnsibleError("Received `variables=None`")
 
@@ -165,7 +144,7 @@ class LookupModule(LookupBase):
         except KeyError as error:
             raise AnsibleError(*error.args)
         except OSResolveError as error:
-            display_error(error, ansible_facts, base_dir)
+            LOG.error(error, facts=ansible_facts, base_dir=base_dir)
             raise AnsibleError(error.message)
 
         return [path]

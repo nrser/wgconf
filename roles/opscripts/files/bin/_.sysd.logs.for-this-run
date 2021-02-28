@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-function .sysd.logs.invocation {
+function _.sysd.logs.for-this-run {
   local unit
   local invocation_id
   local args=()
@@ -12,14 +12,14 @@ function .sysd.logs.invocation {
 View systemd logs for a unit *only* since it was last started.
 
 Usage:
-    .sysd.logs.invocation [OPTIONS] UNIT
+    _.sysd.logs.for-this-run [OPTIONS] UNIT
 
 Options:
     -h, --help  Where you are now.
     *           Passed to `journalctl`.
 
 Example:
-    .sysd.logs.invocation -xe grafana
+    _.sysd.logs.for-this-run -xe grafana
 
 END
         return 1
@@ -45,5 +45,5 @@ END
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-  .sysd.logs.invocation "$@"
+  _.sysd.logs.for-this-run "$@"
 fi
