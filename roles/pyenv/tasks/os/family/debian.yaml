@@ -26,7 +26,7 @@
       - git
 
 - name: >-
-    Clone pyenv git repo to {{ '~/.pyenv' | f }}
+    Clone pyenv git repo to ~/.pyenv
   git:
     repo: https://github.com/pyenv/pyenv.git
     dest: "{{ pyenv_root }}"
@@ -34,7 +34,7 @@
     depth: 1
 
 - name: >-
-    Add env var exports to {{ '~/.bashrc' | f }}
+    Add env var exports to ~/.bashrc
   blockinfile:
     dest: "{{ ansible_facts.env.HOME }}/.bashrc"
     block: |

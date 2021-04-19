@@ -27,4 +27,4 @@
         content: "{{ item.value }}"
         dest: "{{ wg_cfg_client_config_dir }}/{{ item.key }}.conf"
         mode: '0600'
-      no_log: "{{ _wg_cfg_no_log }}"
+      no_log: "{{ wg_cfg_no_log }}"

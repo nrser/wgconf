@@ -15,7 +15,8 @@
     
     - when: not (is_template | bool)
       name: >-
-        Copy {{ name }} script {{ src | f }} → {{ dest | f }}
+        Copy {{ name }} script
+        {{ src | nrser.nansi.rel }} → {{ dest | nrser.nansi.rel }}
       copy:
         src: "{{ src }}"
         dest: "{{ dest }}"

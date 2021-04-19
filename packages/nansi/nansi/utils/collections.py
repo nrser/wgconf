@@ -13,7 +13,8 @@ TKey        = TypeVar('TKey')
 TValue      = TypeVar('TValue')
 TAlias      = TypeVar('TAlias')
 
-Nope = NewType('Nope', Union[None, Literal[False]]) # type: ignore
+Nope        = NewType('Nope', Union[None, Literal[False]]) # type: ignore
+Diggable    = NewType("Diggable", Union[Sequence, Mapping]) # type: ignore
 
 class NotFoundError(Exception):
     pass
@@ -180,7 +181,7 @@ def last(itr: Iterable[T]) -> Optional[T]:
 def pick(mapping: Mapping[K, V], keys: Container[K]) -> Dict[K, V]:
     return {key: value for key, value in mapping.items() if key in keys}
 
-def dig(target: Union[Sequence, Mapping], *key_path: Sequence):
+def dig(target: Diggable, *key_path: Sequence):
     '''Like Ruby - get the value at a key-path, or `None` if any keys in the
     path are missing.
 
@@ -221,6 +222,43 @@ def dig(target: Union[Sequence, Mapping], *key_path: Sequence):
         else:
             return None
     return target
+
+def default_bury_create(
+    target: Diggable,
+    for_key: Sequence,
+) -> Union[List, Dict]:
+    # return [] if isinstance(for_key, int) else {}
+    return {}
+
+def bury(
+    root: Diggable,
+    key_path: Sequence,
+    value: Any,
+    *,
+    create: Callable[[Diggable, Any], Diggable]=default_bury_create,
+):
+    """
+    >>> bury({}, ["A", 1, "B", 2], "TREASURE")
+    {'A': {1: {'B': {2: 'TREASURE'}}}}
+    """
+    target = root
+    while len(key_path) > 0:
+        key = key_path.pop(0)
+        if len(key_path) == 0:
+            # Termination case — no more keys!
+            target[key] = value
+        else:
+            # We now _know_ there are more keys on the path...
+            if key in target:
+                # Easy case — more the target down the path
+                target = target[key]
+            else:
+                # Wonky case — need to create something, which depends on the
+                # _next_ key (which — as mentioned above — we know exists)
+                #
+                target[key] = create(target, key_path[0])
+                target = target[key]
+    return root
 
 def each(
     types: Union[Type, Iterable[Type]],

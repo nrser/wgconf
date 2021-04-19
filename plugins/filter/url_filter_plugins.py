@@ -1,5 +1,4 @@
 from typing import *
-import urllib.parse
 
 from nansi.utils.strings import connect
 

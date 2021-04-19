@@ -1,30 +1,39 @@
-from __future__ import annotations
-import logging
-import sys
-from typing import *
+"""\
+Contains the `RichHandler` class.
+"""
 
-# Some way of complaining (ideally) _outside_ the logging system, to (try) to
-# avoid recursive self-destruction (yeah, I did see something about telling the
-# warning system to go through logging, so it might still explode...)
-# from warnings import warn
+from __future__ import annotations
+from typing import (
+    Any,
+    Optional,
+    Mapping,
+)
+import logging
+import inspect
+import sys
 
 from rich.table import Table
-from rich.console import Console
+from rich.console import Console, ConsoleRenderable, RichCast
 from rich.text import Text
 from rich.style import Style
-from rich.containers import Renderables
 from rich.traceback import Traceback
 from rich.pretty import Pretty
+from rich.highlighter import ReprHighlighter
 
-OUT_CONSOLE = Console(file=sys.stdout)
-ERR_CONSOLE = Console(file=sys.stderr)
-
-
+def is_rich(x: Any) -> bool:
+    return isinstance(x, (ConsoleRenderable, RichCast))
 class RichHandler(logging.Handler):
+    """\
+    A `logging.Handler` extension that uses [rich][] to print pretty nice log
+    entries to the console.
+
+    Output is meant for specifically humans.
+    """
+
     # Default consoles, pointing to the two standard output streams
     DEFAULT_CONSOLES = dict(
-        out=OUT_CONSOLE,
-        err=ERR_CONSOLE,
+        out=Console(file=sys.stdout),
+        err=Console(file=sys.stderr),
     )
 
     # By default, all logging levels log to the `err` console
@@ -45,12 +54,15 @@ class RichHandler(logging.Handler):
         setattr(cls, "__singleton", instance)
         return instance
 
+    consoles: Mapping[str, Console]
+    level_map: Mapping[int, str]
+
     def __init__(
         self,
         level: int = logging.NOTSET,
         *,
         consoles: Optional[Mapping[str, Console]] = None,
-        level_map: Optional[Mapping[str, str]] = None,
+        level_map: Optional[Mapping[int, str]] = None,
     ):
         super().__init__(level=level)
 
@@ -65,16 +77,14 @@ class RichHandler(logging.Handler):
             self.level_map = {**self.DEFAULT_LEVEL_MAP, **level_map}
 
     def emit(self, record):
-        '''
-        Overridden to send log records to Ansible's display.
-        '''
+        # pylint: disable=broad-except
         try:
             self._emit_table(record)
-        except (KeyboardInterrupt, SystemExit):
+        except (KeyboardInterrupt, SystemExit) as error:
             # We want these guys to bub' up
-            raise
+            raise error
         except Exception as error:
-            OUT_CONSOLE.print_exception()
+            self.DEFAULT_CONSOLES["err"].print_exception()
             # self.handleError(record)
 
     def _emit_table(self, record):
@@ -82,7 +92,7 @@ class RichHandler(logging.Handler):
 
         console = self.consoles.get(
             self.level_map.get(record.levelno, "err"),
-            ERR_CONSOLE,
+            self.DEFAULT_CONSOLES["err"],
         )
 
         output = Table.grid(padding=(0, 1))
@@ -107,17 +117,44 @@ class RichHandler(logging.Handler):
         else:
             msg = str(record.msg)
 
-        output.add_row(None, Text(msg))
+        output.add_row(None, msg)
 
         if hasattr(record, "data") and record.data:
             table = Table.grid(padding=(0, 1))
             table.expand = True
-            table.add_column()
+            table.add_column(style=Style(color="blue", italic=True))
+            table.add_column(style=Style(color="#4ec9b0", italic=True))
             table.add_column()
             for key, value in record.data.items():
-                table.add_row(
-                    Text(key, Style(color="blue", italic=True)), Pretty(value)
-                )
+                if is_rich(value):
+                    rich_value_type = None
+                    rich_value = value
+                else:
+                    value_type = type(value)
+                    if hasattr(value_type, "__name__"):
+                        if (
+                            hasattr(value_type, "__module__") and
+                            value_type.__module__ != "builtins"
+                        ):
+                            rich_value_type = \
+                                f"{value_type.__module__}.{value_type.__name__}"
+                        else:
+                            rich_value_type = value_type.__name__
+                    else:
+                        rich_value_type = Pretty(value_type)
+                    if isinstance(value, str):
+                        rich_value = value
+                    elif (
+                        inspect.isfunction(value) and
+                        hasattr(value, "__module__") and
+                        hasattr(value, "__name__")
+                    ):
+                        rich_value = ReprHighlighter()(
+                            f"<function {value.__module__}.{value.__name__}>"
+                        )
+                    else:
+                        rich_value = Pretty(value)
+                table.add_row(key, rich_value_type, rich_value)
             output.add_row(None, table)
 
         if record.exc_info:

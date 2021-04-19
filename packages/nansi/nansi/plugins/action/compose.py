@@ -9,6 +9,7 @@ from ansible.playbook.task import Task
 
 import nansi.logging
 from nansi.template.var_values import VarValues
+from nansi.os_resolve import os_map_resolve
 
 LOG = log = logging.getLogger(__name__)
 
@@ -329,3 +330,36 @@ class ComposeAction(ActionBase):
 
         return result
 
+
+class OSResolveAction(ComposeAction):
+    class Method:
+        def __init__(self, target, mapping):
+            self.target = target
+            self.mapping = mapping
+
+        def __call__(self, *args, **kwds):
+            self.target(*args, **kwds)
+
+    @classmethod
+    def map(cls, **mapping):
+        def decorator(target):
+            return cls.Method(target, mapping)
+        return decorator
+
+    @classmethod
+    def mapping(cls):
+        mapping = {}
+        for name in dir(cls):
+            value = getattr(cls, name)
+            if isinstance(value, cls.Method):
+                bury(mapping, value.key_path, value)
+
+    def compose(self):
+        os_map_resolve(
+            self._task_vars["ansible_facts"],
+            {
+                "family": {
+                    "debian": self.os_family_debian,
+                }
+            }
+        )()

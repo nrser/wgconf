@@ -7,20 +7,25 @@ from pathlib import Path
 import re
 from subprocess import run
 import os
+from argparse import ArgumentParser
 
 from rich.console import Console
 from rich.panel import Panel
 from rich.padding import Padding
 
+
+from nansi import logging
+
+
 C = Console()
+LOG = logging.getLogger("nansi.__doctest__")
+REPO_ROOT = Path(__file__).resolve().parents[2]
+NANSI_ROOT = REPO_ROOT / "packages" / "nansi"
 
-REPO_ROOT = (Path(__file__).parent / '..' / '..').resolve()
-NANSI_ROOT = REPO_ROOT / 'packages' / 'nansi'
-
-ARGS = sys.argv[1:]
 
 def glob(path):
     return _glob(str(path), recursive=True)
+
 
 def rel(path):
     try:
@@ -28,40 +33,54 @@ def rel(path):
     except:
         return str(path)
 
-def is_doctest(path):
-    with open(path, 'r') as f:
+
+@LOG.inject
+def is_doctest(path, *, log=LOG):
+    # log.debug("Checking if doctest...", path=rel(path))
+    with open(path, "r") as f:
         for line in f:
             # if re.match(r'\s*\>\>\>', line):
-            if re.match(r'\s*doctest(?:ing)?\.testmod\(.*\)', line):
+            if re.match(r"\s*doctest(?:ing)?\.testmod\(.*\)", line):
+                # log.debug("YES is a doctest", path=rel(path))
                 return True
+    # log.debug("NO is NOT a doctest", path=rel(path))
     return False
 
+
 def module_for(path):
-    return ".".join(
-        str(Path(path).relative_to(NANSI_ROOT))[:-3].split('/')
-    )
+    return ".".join(str(Path(path).relative_to(NANSI_ROOT))[:-3].split("/"))
+
 
 def nansi_modules():
     return [
         (module_for(path), path)
-        for path
-        in glob(NANSI_ROOT / 'nansi' / '**' / '*.py')
+        for path in glob(NANSI_ROOT / "nansi" / "**" / "*.py")
         if is_doctest(path)
     ]
+
 
 def plugins():
     return [
         path
-        for path
-        in glob(REPO_ROOT / 'roles' / '**' / '*_plugins' / '*.py')
+        for path in glob(REPO_ROOT / "roles" / "**" / "*_plugins" / "*.py")
         if is_doctest(path)
     ]
+
 
 def env():
     return {**os.environ, "DOCTESTING": "yup"}
 
-def test(name, cmd):
-    r = run(cmd, capture_output=True, encoding='utf8', env=env(), check=False)
+
+@LOG.inject
+def test(name, cmd, *, log=LOG):
+    log.debug("Running test command...", name=name, cmd=cmd)
+    r = run(cmd, capture_output=True, encoding="utf8", env=env(), check=False)
+    log.debug(
+        "Test command completed",
+        cmd=cmd,
+        status=r.returncode,
+        len_stdout=len(r.stdout)
+    )
     if r.returncode == 0 and len(r.stdout) == 0:
         C.print(":white_check_mark:", name)
         return True
@@ -73,37 +92,100 @@ def test(name, cmd):
         C.print(":x:", name)
         return False
 
-def test_module(module):
-    return test(module, ['python', '-m', module])
+@LOG.inject
+def test_module(module, *, log=LOG):
+    log.debug("Testing MODULE...", module=module)
+    return test(module, ["python", "-m", module])
 
-def test_file(path):
-    return test(rel(path), ['python', '-m', 'doctest', path])
+
+@LOG.inject
+def test_file(path, *, log=LOG):
+    log.debug("Testing FILE (Ansible plugin)...", path=path)
+    return test(rel(path), ["python", "-m", "doctest", path])
+
 
 def is_nansi_module(path):
     try:
-        Path(path).relative_to(NANSI_ROOT / 'nansi')
+        Path(path).relative_to(NANSI_ROOT / "nansi")
     except:
         return False
     return True
 
 
-def main():
-    ok = True
+@LOG.inject
+def main(*, log=LOG):
+    parser = ArgumentParser(description="Doctest driver script")
+    parser.add_argument(
+        "-d", "--debug",
+        action="store_true",
+        help="Switch on debug log output"
+    )
+    parser.add_argument(
+        "-f", "--fail-fast",
+        action="store_true",
+        help="Quit after first failure"
+    )
+    parser.add_argument(
+        "targets",
+        nargs="*",
+        help="Specific module names or file paths to run"
+    )
 
-    if len(ARGS) == 0:
+    args = parser.parse_args()
+
+    logging.setup(level=(logging.DEBUG if args.debug else logging.INFO))
+
+    LOG.debug("Parsed args", args_=args)
+
+    count = 0
+    failures = []
+
+    if len(args.targets) == 0:
+        log.info("Testing all modules and plugins...")
         for module, path in nansi_modules():
-            ok = ok and test_module(module)
+            rel_path = rel(path)
+            if not test_module(module):
+                if args.fail_fast:
+                    log.error("Fast-fail", path=rel_path)
+                    sys.exit(1)
+                failures.append(rel_path)
+            count += 1
         for path in plugins():
-            ok = ok and test_file(path)
+            rel_path = rel(path)
+            if not test_file(path):
+                if args.fail_fast:
+                    log.error("Fast-fail", path=rel_path)
+                    sys.exit(1)
+                failures.append(rel_path)
+            count += 1
     else:
-        for arg in ARGS:
-            if is_nansi_module(arg):
-                ok = ok and test_module(module_for(arg))
+        log.info("Targets list specified", targets=args.targets)
+        for path in args.targets:
+            rel_path = rel(path)
+            if is_nansi_module(path):
+                if not test_module(module_for(path)):
+                    if args.fail_fast:
+                        log.error("Fast-fail", path=rel_path)
+                        sys.exit(1)
+                    failures.append(rel_path)
+                count += 1
             else:
-                ok = ok and test_file(arg)
+                if not test_file(path):
+                    if args.fail_fast:
+                        log.error("Fast-fail", path=rel_path)
+                        sys.exit(1)
+                    failures.append(rel_path)
+                count += 1
 
-    if not ok:
+    if len(failures) == 0:
+        log.info(f"All {count} file(s) PASSED")
+    else:
+        log.error(
+            f"{len(failures)} file(s) failed (of {count} file(s) tested)",
+            failures=failures
+        )
         sys.exit(1)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

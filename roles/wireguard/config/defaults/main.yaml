@@ -114,13 +114,13 @@ wg_cfg_post_down_src: post_down.sh
 # filename and `wg_cfg_hooks_dir`.
 # 
 wg_cfg_pre_up_dest: >-
-  {{ wg_cfg_pre_up_src | wg_cfg_hook_dest(wg_cfg_hooks_dir) }}
+  {{ wg_cfg_pre_up_src | nrser.nansi.wg_cfg_hook_dest(wg_cfg_hooks_dir) }}
 wg_cfg_post_up_dest: >-
-  {{ wg_cfg_post_up_src | wg_cfg_hook_dest(wg_cfg_hooks_dir) }}
+  {{ wg_cfg_post_up_src | nrser.nansi.wg_cfg_hook_dest(wg_cfg_hooks_dir) }}
 wg_cfg_pre_down_dest: >-
-  {{ wg_cfg_pre_down_src | wg_cfg_hook_dest(wg_cfg_hooks_dir) }}
+  {{ wg_cfg_pre_down_src | nrser.nansi.wg_cfg_hook_dest(wg_cfg_hooks_dir) }}
 wg_cfg_post_down_dest: >-
-  {{ wg_cfg_post_down_src | wg_cfg_hook_dest(wg_cfg_hooks_dir) }}
+  {{ wg_cfg_post_down_src | nrser.nansi.wg_cfg_hook_dest(wg_cfg_hooks_dir) }}
 
 
 # Peers
@@ -181,7 +181,7 @@ wg_cfg_local_client_config_dir: null
 # Override at ur own risk.
 # 
 
-_wg_cfg_no_log: true
+wg_cfg_no_log: true
 
 # Internal defaults for config objects. User-defined ones are merged over to
 # provide actual defaults.
@@ -194,16 +194,16 @@ _wg_cfg_defaults:
     # section, detailed below.
     pre_up: >-
       {{ wg_cfg_pre_up_dest
-          | wg_cfg_hook_value( wg_cfg_name, wg_cfg_sys_iface ) }}
+          | nrser.nansi.wg_cfg_hook_value( wg_cfg_name, wg_cfg_sys_iface ) }}
     post_up: >-
       {{  wg_cfg_post_up_dest
-          | wg_cfg_hook_value( wg_cfg_name, wg_cfg_sys_iface ) }}
+          | nrser.nansi.wg_cfg_hook_value( wg_cfg_name, wg_cfg_sys_iface ) }}
     pre_down: >-
       {{  wg_cfg_pre_down_dest
-          | wg_cfg_hook_value( wg_cfg_name, wg_cfg_sys_iface ) }}
+          | nrser.nansi.wg_cfg_hook_value( wg_cfg_name, wg_cfg_sys_iface ) }}
     post_down: >-
       {{  wg_cfg_post_down_dest
-          | wg_cfg_hook_value( wg_cfg_name, wg_cfg_sys_iface ) }}
+          | nrser.nansi.wg_cfg_hook_value( wg_cfg_name, wg_cfg_sys_iface ) }}
   peer: {}
   client:
     # Why the hell not? Doesn't seem like it should impact perf much
@@ -218,11 +218,14 @@ _wg_cfg_defaults:
 # `wgconf` Python Package
 # ----------------------------------------------------------------------------
 
+_wg_cfg_pkg_name: wgconf
 _wg_cfg_pkg_version: 0.0.2.dev0
 _wg_cfg_pkg_filename: >-
-  wgconf-{{ _wg_cfg_pkg_version }}-py3-none-any.whl
+  {{ _wg_cfg_pkg_name }}-{{ _wg_cfg_pkg_version }}-py3-none-any.whl
+_wg_cfg_pkg_dir: >-
+  {{ (local_repo_dir, 'packages', _wg_cfg_pkg_name) | nrser.nansi.to_path }}
 _wg_cfg_pkg_src: >-
-  {{ local_repo_dir }}/packages/wgconf/dist/{{ _wg_cfg_pkg_filename }}
+  {{ (_wg_cfg_pkg_dir, 'dist', _wg_cfg_pkg_filename) | nrser.nansi.to_path }}
 _wg_cfg_pkg_dest: >-
   {{ wg_cfg_tmp }}/{{ _wg_cfg_pkg_filename }}
 
