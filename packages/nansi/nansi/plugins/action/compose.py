@@ -1,7 +1,7 @@
 from __future__ import annotations
 import logging
 from abc import abstractmethod
-from typing import *
+from typing import Dict, Optional
 
 from ansible.plugins.action import ActionBase
 from ansible.errors import AnsibleError
@@ -9,7 +9,7 @@ from ansible.playbook.task import Task
 
 import nansi.logging
 from nansi.template.var_values import VarValues
-from nansi.os_resolve import os_map_resolve
+
 
 LOG = log = logging.getLogger(__name__)
 
@@ -87,7 +87,7 @@ class TaskRunner:
 
     def add_vars(self, **new_task_vars):
         if self._task_vars is None:
-            base_vars = self._compose_action._task_vars
+            base_vars = self._compose_action.task_vars
         else:
             base_vars = self._task_vars
 
@@ -101,10 +101,10 @@ class TaskRunner:
 class Tasks:
     """Nicety wrapper assigned to `ComposeAction#tasks`, allowing you to do:
 
-        self.tasks.file(
-            path = 'some/path',
-            state = 'absent',
-        )
+    self.tasks.file(
+        path = 'some/path',
+        state = 'absent',
+    )
     """
 
     def __init__(self, compose_action: ComposeAction):
@@ -137,15 +137,20 @@ class ComposeAction(ActionBase):
             f"nrser.nansi.{self.__class__.__module__.split('.')[-1]}"
         )
 
+    # This is really just so that pylint shuts up about it's use in TaskRunner
+    @property
+    def task_vars(self):
+        return self._task_vars
+
     # Helper Methods
     # ========================================================================
 
     def result_status(self, result):
-        if result.get('failed', False):
-            return 'FAILED'
-        if result.get('changed', False):
-            return 'CHANGED'
-        return 'OK'
+        if result.get("failed", False):
+            return "FAILED"
+        if result.get("changed", False):
+            return "CHANGED"
+        return "OK"
 
     def append_result(self, task, action, result):
         if "results" not in self._result:
@@ -158,6 +163,9 @@ class ComposeAction(ActionBase):
         action: ActionBase,
         result: Dict,
     ) -> bool:
+        # pylint: disable=no-self-use
+        # Meant to be overridden to customize, so it makes sense to me as a
+        # method, even though _this_ implementation doesn't need to be
         """
         Determins if something has "changed" given the result of a composed
         sub-task.
@@ -232,6 +240,7 @@ class ComposeAction(ActionBase):
         }
 
     def collect_args(self, defaults={}, omit_vars=tuple(), var_prefix=None):
+        # pylint: disable=dangerous-default-value
         return {
             **defaults,
             **self.prefixed_vars(prefix=var_prefix, omit=omit_vars),
@@ -268,13 +277,13 @@ class ComposeAction(ActionBase):
         except AnsibleError as error:
             self.log.debug(
                 f"AnsibleError during `{self.__class__.__name__}.compose`",
-                exc_info=True
+                exc_info=True,
             )
             raise error
         except Exception as error:
             self.log.debug(
                 f"NON-AnsibleError during `{self.__class__.__name__}.compose`",
-                exc_info=True
+                exc_info=True,
             )
             # `AnsibleError(Exception)` sig is (types as best as I can infer):
             #
@@ -329,37 +338,3 @@ class ComposeAction(ActionBase):
             self.handle_ok_result(task, action, result)
 
         return result
-
-
-class OSResolveAction(ComposeAction):
-    class Method:
-        def __init__(self, target, mapping):
-            self.target = target
-            self.mapping = mapping
-
-        def __call__(self, *args, **kwds):
-            self.target(*args, **kwds)
-
-    @classmethod
-    def map(cls, **mapping):
-        def decorator(target):
-            return cls.Method(target, mapping)
-        return decorator
-
-    @classmethod
-    def mapping(cls):
-        mapping = {}
-        for name in dir(cls):
-            value = getattr(cls, name)
-            if isinstance(value, cls.Method):
-                bury(mapping, value.key_path, value)
-
-    def compose(self):
-        os_map_resolve(
-            self._task_vars["ansible_facts"],
-            {
-                "family": {
-                    "debian": self.os_family_debian,
-                }
-            }
-        )()
