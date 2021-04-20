@@ -206,12 +206,12 @@ class Config:
             actions.append(_PeerUpdateAction(name, type_, peer))
 
         for name, update in updates.items():
+            peer = peers_by_name.get(name)
+
             if update is None:
-                if peer := updates.get(name):
+                if peer is not None:
                     add_action(name, "remove", peer)
                 continue
-
-            peer = peers_by_name.get(name)
 
             if key := update.get("public_key"):
                 if by_pubkey := peers_by_public_key.get(key):
