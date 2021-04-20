@@ -65,6 +65,10 @@ TLevelValue = Union[TLevel, TLevelStr, TLevelName]
 # Valid _verbose_ switch values, provided like `-v` (1), `-vv` (2), etc.
 TVerbosity = Literal[0, 1, 2, 3]
 
+# Union type representing when we don't know (or care) if we're getting a
+# LogGetter proxy or an actual Logger
+TLogger = Union[logging.Logger, LogGetter]
+
 # Re-defining log levels allows using this module to be swapped in for basic
 # uses of stdlib `logging`.
 CRITICAL = logging.CRITICAL  # 50
