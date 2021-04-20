@@ -48,7 +48,9 @@ def is_doctest(path, *, log=LOG):
 
 
 def module_for(path):
-    return ".".join(str(Path(path).relative_to(NANSI_ROOT))[:-3].split("/"))
+    return ".".join(
+        str(Path(path).resolve().relative_to(NANSI_ROOT))[:-3].split("/")
+    )
 
 
 def nansi_modules():
@@ -106,14 +108,15 @@ def test_file(path, *, log=LOG):
 
 def is_nansi_module(path):
     try:
-        Path(path).relative_to(NANSI_ROOT / "nansi")
-    except:
+        Path(path).resolve().relative_to(NANSI_ROOT / "nansi")
+    except ValueError:
         return False
     return True
 
 
 @LOG.inject
 def main(*, log=LOG):
+    print(NANSI_ROOT)
     parser = ArgumentParser(description="Doctest driver script")
     parser.add_argument(
         "-d", "--debug",
@@ -140,23 +143,23 @@ def main(*, log=LOG):
     count = 0
     failures = []
 
+    def failed(path):
+        if args.fail_fast:
+            log.error("Fail-fast", path=path)
+            sys.exit(1)
+        failures.append(path)
+
     if len(args.targets) == 0:
         log.info("Testing all modules and plugins...")
         for module, path in nansi_modules():
             rel_path = rel(path)
             if not test_module(module):
-                if args.fail_fast:
-                    log.error("Fast-fail", path=rel_path)
-                    sys.exit(1)
-                failures.append(rel_path)
+                failed(rel_path)
             count += 1
         for path in plugins():
             rel_path = rel(path)
             if not test_file(path):
-                if args.fail_fast:
-                    log.error("Fast-fail", path=rel_path)
-                    sys.exit(1)
-                failures.append(rel_path)
+                failed(path)
             count += 1
     else:
         log.info("Targets list specified", targets=args.targets)
@@ -164,17 +167,11 @@ def main(*, log=LOG):
             rel_path = rel(path)
             if is_nansi_module(path):
                 if not test_module(module_for(path)):
-                    if args.fail_fast:
-                        log.error("Fast-fail", path=rel_path)
-                        sys.exit(1)
-                    failures.append(rel_path)
+                    failed(rel_path)
                 count += 1
             else:
                 if not test_file(path):
-                    if args.fail_fast:
-                        log.error("Fast-fail", path=rel_path)
-                        sys.exit(1)
-                    failures.append(rel_path)
+                    failed(rel_path)
                 count += 1
 
     if len(failures) == 0:
