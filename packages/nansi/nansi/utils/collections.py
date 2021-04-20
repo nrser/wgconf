@@ -240,6 +240,9 @@ def bury(
     """
     >>> bury({}, ["A", 1, "B", 2], "TREASURE")
     {'A': {1: {'B': {2: 'TREASURE'}}}}
+
+    >>> bury({}, ["family", "debian"], "payload")
+    {'family': {'debian': 'payload'}}
     """
     target = root
     while len(key_path) > 0:
