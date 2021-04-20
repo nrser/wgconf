@@ -1,6 +1,10 @@
 from typing import *
 
 import nansi.os_resolve
+from nansi import logging
+
+
+logging.setup_for_display()
 
 class FilterModule:
     def filters(self):
