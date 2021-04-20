@@ -1,11 +1,11 @@
 from __future__ import annotations
-from typing import *
-import re
+from pathlib import Path
+from typing import Any, Dict, Iterator, List, Literal, Optional, Tuple, Union
 from collections import namedtuple
 
 from typeguard import check_type
 
-from .util import *
+from .util import PropValue, find, last
 from .typing import (
     decode,
     is_list as is_list_typing,
@@ -20,28 +20,31 @@ from .line import (
     DefaultSectionHead,
 )
 
-DUP_TYPE = Literal['first', 'list'] # pylint: disable=invalid-name
-DEFAULT_DUP = 'first'
+DUP_TYPE = Literal["first", "list"]  # pylint: disable=invalid-name
+DEFAULT_DUP = "first"
 
-Meta = namedtuple('Meta', 'comment name value')
+Meta = namedtuple("Meta", "comment name value")
+
 
 def meta_for(comment: Comment) -> Optional[Meta]:
     if match := Option.REGEXP.fullmatch(comment.value):
         return Meta(comment, match.group(1), match.group(2))
     return None
 
+
 def encode_value(value: PropValue) -> Optional[str]:
-    if value is None or value == '':
+    if value is None or value == "":
         return None
     if isinstance(value, str):
         return value
     if value is True:
-        return 'true'
+        return "true"
     if value is False:
-        return 'false'
+        return "false"
     if isinstance(value, (list, tuple)):
-        return ', '.join(encode_value(v) for v in value)
+        return ", ".join(encode_value(v) for v in value)
     return str(value)
+
 
 class Prop(property):
     # pylint: disable=redefined-builtin
@@ -79,7 +82,7 @@ class Prop(property):
             del section[self.option_name]
 
     def _set(self, section, value) -> None:
-        if value is None or value == '':
+        if value is None or value == "":
             self._del(section)
             return
         value = self.cast(value)
@@ -96,32 +99,30 @@ class Prop(property):
             return self.option_name in section
 
     def is_change(self, section, new_value) -> bool:
-        '''Would setting the Prop to `new_value` change the `section`?
+        """Would setting the Prop to `new_value` change the `section`?
 
         String-encodes `new_value` and compares that to the string-encoding in
         the relevant Option or Comment (in the case of meta props). The goal is
         to avoid any differences due to casting and test if the actual file
         contents would change in a material way.
-        '''
+        """
         new_enc = encode_value(new_value)
         if new_enc is None:
-            return self.is_set(section) # Delete option that is present?
+            return self.is_set(section)  # Delete option that is present?
         if self.is_set(section):
             # Change value?
             return new_enc != self._get(section, encoded=True)
         else:
-            return True # Add option that is not present
+            return True  # Add option that is not present
 
     def cast(self, value):
         if (
-            (is_list_typing(self.type) or is_optional_list(self.type)) and
-            not isinstance(value, list)
-        ):
+            is_list_typing(self.type) or is_optional_list(self.type)
+        ) and not isinstance(value, list):
             return [value]
         if isinstance(value, Path):
             return str(value)
         return value
-
 
 
 class Section:
@@ -132,28 +133,27 @@ class Section:
     #             return self(head)
 
     @classmethod
-    def props(self) -> Dict[str, Prop]:
+    def props(cls) -> Dict[str, Prop]:
         return {
-            name: getattr(self, name)
-            for name
-            in dir(self)
-            if isinstance(getattr(self, name, None), Prop)
+            name: getattr(cls, name)
+            for name in dir(cls)
+            if isinstance(getattr(cls, name, None), Prop)
         }
 
     @classmethod
-    def is_prop(self, name) -> bool:
-        return isinstance(getattr(self, name, None))
+    def is_prop(cls, name) -> bool:
+        return isinstance(getattr(cls, name, None))
 
     _head: Union[SectionHead, DefaultSectionHead]
     _dup: DUP_TYPE
 
-    name = Prop('Name', Optional[str], meta=True)
-    description = Prop('Description', Optional[str], meta=True)
+    name = Prop("Name", Optional[str], meta=True)
+    description = Prop("Description", Optional[str], meta=True)
 
     def __init__(
         self,
         head: Union[SectionHead, DefaultSectionHead],
-        dup: DUP_TYPE=DEFAULT_DUP,
+        dup: DUP_TYPE = DEFAULT_DUP,
     ):
         check_type("Bad `dup` value", dup, DUP_TYPE)
         self._head = head
@@ -265,18 +265,19 @@ class Section:
             line = line.next
 
     def has_changes(self, **props) -> bool:
-        return any((
-            getattr(self.__class__, prop_name).is_change(self, new_value)
-            for prop_name, new_value
-            in props.items()
-        ))
+        return any(
+            (
+                getattr(self.__class__, prop_name).is_change(self, new_value)
+                for prop_name, new_value in props.items()
+            )
+        )
 
     def update(self, **props):
         for prop_name, prop_value in props.items():
             setattr(self, prop_name, prop_value)
 
     def __str__(self) -> str:
-        return ''.join((f"{line}\n" for line in self))
+        return "".join((f"{line}\n" for line in self))
 
     def __iter__(self, include_default_head: bool = False) -> Iterator[Line]:
         if include_default_head or (not self.is_default):
@@ -290,7 +291,7 @@ class Section:
         return bool(find(self.options(), lambda opt: opt.name == name))
 
     def __getitem__(self, name: str) -> Union[None, str, List[str]]:
-        if self.dup == 'list':
+        if self.dup == "list":
             values = [opt.value for opt in self.options() if opt.name == name]
             if len(values) == 1:
                 return values[0]
@@ -301,7 +302,7 @@ class Section:
         return None
 
     def __setitem__(self, name: str, value: Any) -> None:
-        if self.dup == 'list' and isinstance(value, (list, tuple)):
+        if self.dup == "list" and isinstance(value, (list, tuple)):
             strings = tuple(map(encode_value, value))
 
             if len(strings) == 0:
@@ -311,12 +312,13 @@ class Section:
             options = [opt for opt in self.options() if opt.name == name]
 
             if len(options) == 0:
-                insert_after = last((
-                    line for
-                    line in
-                    self.__iter__(include_default_head=True)
-                    if not isinstance(line, Blank)
-                ))
+                insert_after = last(
+                    (
+                        line
+                        for line in self.__iter__(include_default_head=True)
+                        if not isinstance(line, Blank)
+                    )
+                )
             else:
                 insert_after = options[0].prev
 
@@ -341,12 +343,13 @@ class Section:
                     return
                 option.value = string
             else:
-                last_non_blank_line = last((
-                    line for
-                    line in
-                    self.__iter__(include_default_head=True)
-                    if not isinstance(line, Blank)
-                ))
+                last_non_blank_line = last(
+                    (
+                        line
+                        for line in self.__iter__(include_default_head=True)
+                        if not isinstance(line, Blank)
+                    )
+                )
                 last_non_blank_line.insert_next(Option(name=name, value=string))
 
     def __delitem__(self, name: str) -> None:

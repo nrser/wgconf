@@ -1,20 +1,17 @@
 from __future__ import annotations
-from typing import *
+from typing import Optional
 import re
 from dataclasses import dataclass
 
 # Pylint doesn't like `REGEXP` constant in dataclasses?
 # pylint: disable=invalid-name
 
+
 class Line:
-    REGEXP = None # For the linters in the crowd tonight!!
+    REGEXP = None  # For the linters in the crowd tonight!!
 
     prev: Optional[Line] = None
     next: Optional[Line] = None
-
-    def __init__(self):
-        self.prev = None
-        self.next = None
 
     @classmethod
     def from_string(cls, string: str) -> Optional[Line]:
@@ -30,7 +27,7 @@ class Line:
     def from_match(cls, match: re.Match) -> Line:
         return cls(*match.groups())
 
-    def remove(self) ->  None:
+    def remove(self) -> None:
         if self.prev is not None:
             self.prev.next = self.next
         if self.next is not None:
@@ -53,19 +50,19 @@ class Line:
 
 @dataclass
 class Blank(Line):
-    REGEXP = re.compile(r'\s*')
+    REGEXP = re.compile(r"\s*")
 
     @classmethod
     def from_match(cls, match: re.Match) -> Blank:
         return Blank()
 
     def __str__(self) -> str:
-        return ''
+        return ""
 
 
 @dataclass
 class Comment(Line):
-    REGEXP = re.compile(r'#\ ?(.*)')
+    REGEXP = re.compile(r"#\ ?(.*)")
 
     value: str
 
@@ -83,9 +80,10 @@ class OptBase(Line):
         # pylint: disable=unexpected-keyword-arg
         return cls(name=match.group(1), value=match.group(2).rstrip())
 
+
 @dataclass
 class Option(OptBase):
-    REGEXP = re.compile(r'([A-Za-z]+)\s*=\s*(.+)')
+    REGEXP = re.compile(r"([A-Za-z]+)\s*=\s*(.+)")
 
     def __str__(self) -> str:
         return f"{self.name} = {self.value}"
@@ -93,20 +91,20 @@ class Option(OptBase):
 
 @dataclass
 class SectionHead(Line):
-    REGEXP = re.compile(r'\[([A-Za-z]+)\]\s*')
+    REGEXP = re.compile(r"\[([A-Za-z]+)\]\s*")
 
     value: str
 
     def __str__(self) -> str:
         return f"[{self.value}]"
 
-class DefaultSectionHead(Line):
 
+class DefaultSectionHead(Line):
     @classmethod
     def match(cls, line: str) -> Optional[re.Match]:
         return None
 
-    def remove(self) ->  None:
+    def remove(self) -> None:
         raise NotImplementedError("Can't remove DefaultSectionHead")
 
     def insert_prev(self, line: Line) -> None:

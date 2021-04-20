@@ -135,7 +135,7 @@ def level_for(value: TLevelValue) -> TLevel:
             >>> level_for("8")
             Traceback (most recent call last):
                 ...
-            ValueError: Unknown log level integer 8; known levels are 50 (CRITICAL), 50 (FATAL), 40 (ERROR), 30 (WARNING), 30 (WARN), 20 (INFO), 10 (DEBUG) and 0 (NOTSET)
+            ValueError: Unknown log level integer 8; known levels are 50 (CRITICAL), 50 (FATAL), 40 (ERROR), 30 (WARNING), 30 (WARN), 20 (INFO), 10 (DEBUG), 0 (NOTSET)
 
     3.  We also accept level *names* (gasp!), case-insensitive:
 
@@ -150,7 +150,7 @@ def level_for(value: TLevelValue) -> TLevel:
             >>> level_for([])
             Traceback (most recent call last):
                 ...
-            clavier.err.ArgTypeError: Expected `value` to be `str` or `int`, given `list`: []
+            TypeError: Expected `value` to be str or int, given <class 'list'>: []
     """
 
     if isinstance(value, str):
@@ -172,7 +172,7 @@ def level_for(value: TLevelValue) -> TLevel:
         )
     raise TypeError(
         "Expected `value` to be str or int, "
-        f"given a {type(value)}: {repr(value)}"
+        f"given {type(value)}: {repr(value)}"
     )
 
 

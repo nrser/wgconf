@@ -1,4 +1,8 @@
 {
   "python.formatting.provider": "black",
-  "python.pythonPath": "/Users/nrser/.pyenv/versions/bogart/bin/python"
+  "python.pythonPath": "/Users/nrser/.pyenv/versions/bogart/bin/python",
+  "python.linting.pylintEnabled": true,
+  "cSpell.words": [
+    "genpsk"
+  ]
 }

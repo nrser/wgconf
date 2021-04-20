@@ -19,15 +19,15 @@ ScalarPropValue = NewType(
         str, # Most props
         int, # `ListenPort`
         bool, # `SaveConfig`
-    ]
+    ] # type: ignore
 )
 
 PropValue = NewType(
     'PropValue',
     Union[
         ScalarPropValue,
-        List[ScalarPropValue],
-    ]
+        List[ScalarPropValue]
+    ] # type: ignore
 )
 
 PropValues = NewType(
@@ -39,6 +39,7 @@ def find(itr: Iterator[T], predicate: Callable[[T], bool]) -> Optional[T]:
     for item in itr:
         if predicate(item):
             return item
+    return None
 
 def find_map(itr: Iterator[T], fn: Callable[[T], V]) -> Optional[V]:
     for item in itr:
@@ -131,18 +132,18 @@ def path_property(
 def write(
     dest: Union[TextIO, Path, str],
     string: str,
+    *,
     mode: str = 'w',
     encoding: Optional[str] = 'utf_8',
     perms: int = 0o600,
     **other_open_kwds
 ):
     if isinstance(dest, IOBase):
-        dest.write(str(self))
+        dest.write(string)
     else:
         path = dest if isinstance(dest, Path) else Path(dest)
-        
+
         with path.open(mode=mode, encoding=encoding, **other_open_kwds) as fp:
             fp.write(string)
-    
+
         os.chmod(path, perms)
-    
