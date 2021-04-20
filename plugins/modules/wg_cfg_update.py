@@ -1,11 +1,7 @@
-import sys
-import os
-import asyncio
 from pathlib import Path
 
 from ansible.module_utils.basic import AnsibleModule
 
-from wgconf.util import pick
 from wgconf.config import Config
 
 def req(**kwds):
@@ -46,7 +42,7 @@ def merge_client(props, defaults):
 def main():
     # https://docs.ansible.com/ansible/latest/dev_guide/developing_program_flow_modules.html#argument-spec
 
-    module = AnsibleModule(
+    mod = AnsibleModule(
         argument_spec=ARGUMENT_SPEC,
         supports_check_mode=False,
     )
@@ -55,35 +51,35 @@ def main():
 
     config = Config(**{
         k: v
-        for k, v in module.params.items()
-        if k in CONFIG_KWDS and module.params[k] is not None
+        for k, v in mod.params.items()
+        if k in CONFIG_KWDS and mod.params[k] is not None
     })
 
     interface_defaults, peer_defaults, client_defaults = (
         {k: v for k, v in d.items() if v is not None}
         for d in (
-            module.params[arg]
+            mod.params[arg]
             for arg
             in ('interface_defaults', 'peer_defaults', 'client_defaults')
         )
     )
 
     config.update_interface(
-        **{**interface_defaults, **module.params['interface']}
+        **{**interface_defaults, **mod.params['interface']}
     )
 
-    if module.params.get('clients') is not None:
+    if mod.params.get('clients') is not None:
         client_configs = config.update_clients({
             name: merge_client(props, client_defaults)
             for name, props
-            in module.params['clients'].items()
+            in mod.params['clients'].items()
         })
 
         if len(client_configs) > 0:
-            if client_config_dir := module.params['client_config_dir']:
+            if client_config_dir := mod.params['client_config_dir']:
                 cc_dir = Path(client_config_dir)
             else:
-                cc_dir = Path(module.params['dir']) / 'clients'
+                cc_dir = Path(mod.params['dir']) / 'clients'
 
             cc_dir.mkdir(exist_ok=True)
             if not is_0oX00(cc_dir):
@@ -94,18 +90,18 @@ def main():
                 client_config.write(cc_path)
                 result['client_configs'][name] = str(cc_path)
 
-    if module.params.get('peers') is not None:
+    if mod.params.get('peers') is not None:
         config.update_peers({
             name: {**peer_defaults, **update}
             for name, update
-            in module.params['peers'].items()
+            in mod.params['peers'].items()
         })
 
     if config.is_diff():
         config.write()
         result['changed'] = True
 
-    module.exit_json(**result)
+    mod.exit_json(**result)
 
 if __name__ == '__main__':
     main()
