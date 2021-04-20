@@ -1,8 +1,8 @@
 from __future__ import annotations
-from typing import *
+from typing import Literal, Optional
 import logging
 
-from nansi.plugins.action.compose import OSResolveAction
+from nansi.plugins.action.os_resolve import OSResolveAction
 from nansi.plugins.action.args import Arg, ArgsBase
 
 LOG = logging.getLogger(__name__)
@@ -10,7 +10,7 @@ LOG = logging.getLogger(__name__)
 
 class Args(ArgsBase):
     state = Arg(Literal["present", "absent"], "present")
-    version = Arg(str)
+    version = Arg(Optional[str], None)
 
 
 class DebianArgs(Args):
@@ -22,9 +22,9 @@ class DebianArgs(Args):
             return self.name
         return dict(name=self.name, version=self.version)
 
+
 class ActionModule(OSResolveAction):
     @OSResolveAction.map(family="debian")
     def debian(self):
         args = DebianArgs(self._task.args, self._task_vars)
-        self.tasks.nrser.nansi.apt_ext(names=args.names, state=args.state)
-
+        self.tasks["nrser.nansi.apt_ext"](names=args.names, state=args.state)
