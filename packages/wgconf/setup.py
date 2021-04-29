@@ -1,11 +1,14 @@
 import setuptools
 
-with open("README.md", "r") as fh:
-    long_description = fh.read()
+with open("README.md", "r") as file:
+    long_description = file.read()
+
+with open("VERSION", "r") as file:
+    version = file.read().strip()
 
 setuptools.setup(
     name="wgconf",
-    version="0.0.2-dev",
+    version=version,
     author="NRSER",
     author_email="neil@nrser.com",
     description="Create and manage WireGuard config files",

@@ -4,13 +4,15 @@ Typed properties, with optional defaults and cast functions.
 
 from __future__ import annotations
 from typing import *
-import logging
+from abc import ABC, abstractmethod
 
 from typeguard import check_type
 
+from nansi import logging
+
 # pylint: disable=redefined-builtin,invalid-name,redefined-outer-name
 
-LOG = log = logging.getLogger(__name__)
+LOG = logging.getLogger(__name__)
 
 TValue = TypeVar("TValue")
 TInput = TypeVar("TInput")
@@ -120,6 +122,13 @@ class Prop(Generic[TValue, TInput]):
     def type(self) -> Type[TValue]:
         return self._type
 
+    def test_type(self, value: Any) -> bool:
+        try:
+            check_type("", value, self._type)
+        except TypeError:
+            return False
+        return True
+
     def check_type(
         self,
         value: Any,
@@ -188,7 +197,7 @@ class Prop(Generic[TValue, TInput]):
         return f"{name}: {self.type}"
 
 
-class Proper:
+class Proper(ABC):
     @classmethod
     def is_prop(cls, name: str) -> bool:
         if not isinstance(name, str):

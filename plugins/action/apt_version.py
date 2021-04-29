@@ -12,10 +12,10 @@ class Args(ArgsBase):
     state       = Arg( Literal[ 'present', 'absent' ], 'present' )
     packages    = Arg.one_or_more( PackageArgs )
 
-    def __init__(self, values, task_vars=None):
+    def __init__(self, values, parent=None):
         if 'packages' not in values:
             values = dict(packages=values)
-        super().__init__(values, task_vars)
+        super().__init__(values, parent=parent)
 
 class ActionModule(ComposeAction):
     def compose(self):

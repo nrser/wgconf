@@ -15,7 +15,7 @@ def cast_name(args, _, value):
     if isinstance(value, str):
         return value
     if isinstance(value, abc.Mapping):
-        return PackageArgs(value, args.task_vars)
+        return PackageArgs(value, args)
     return value
 
 
@@ -28,7 +28,7 @@ def cast_key_id(args, _, value):
 def cast_respoitory_repo(args, _, value):
     if value is None:
         return None
-    return os_fact_format(value, args.task_vars["ansible_facts"])
+    return os_fact_format(value, args.vars.raw["ansible_facts"])
 
 
 class Args(OpenArgsBase):
@@ -97,7 +97,7 @@ class Args(OpenArgsBase):
 
 class ActionModule(ComposeAction):
     def compose(self):
-        args = Args(self._task.args, self._task_vars)
+        args = Args(self._task.args, parent=self)
 
         if args.has_key():
             self.tasks.apt_key(

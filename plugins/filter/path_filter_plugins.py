@@ -1,9 +1,10 @@
 from pathlib import PurePosixPath, PureWindowsPath
 import os.path
 
-import nansi.utils.path
+from nansi.utils import paths
 from nansi.utils.collections import flatten
 from nansi.os_resolve import os_map_resolve
+from nansi.utils import doctesting
 
 def to_posix_path(path_segments) -> str:
     return str(PurePosixPath(*flatten(path_segments)))
@@ -46,9 +47,8 @@ class FilterModule:
             to_path         = to_path,
               path          = to_path,  # Old name
             to_win_path     = to_win_path,
-            rel             = nansi.utils.path.rel,
+            rel             = paths.rel,
             is_file         = is_file,
         )
 
-from nansi.utils import doctesting
 doctesting.testmod(__name__)

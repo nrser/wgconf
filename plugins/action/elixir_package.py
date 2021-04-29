@@ -12,7 +12,7 @@ class Args(ArgsBase):
 
 class ActionModule(ComposeAction):
     def os_family_debian(self):
-        args = Args(self._task.args, self._task_vars)
+        args = Args(self._task.args, parent=self)
 
         self.tasks["nrser.nansi.apt_version"](
             packages = dict(

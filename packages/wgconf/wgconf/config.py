@@ -48,7 +48,11 @@ class Config:
     DEFAULT_PRIVATE_ADDRESS = "10.10.0.1/32"
 
     hostname: str
+    name: Optional[str]
+    dir: Optional[Union[Path, str]]
+    file: File
     wg_bin_path: Path
+    public_address: Optional[str]
 
     dir = path_property("_dir", doc="Default directory to read/write config")
 

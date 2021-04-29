@@ -96,7 +96,7 @@
             'client_name': _wg_cfg_cc.key,
             'config_name': wg_cfg_name,
             'hostname': wg_cfg_hostname,
-          } | wg_cfg_local_client_config_dest
+          } | nrser.nansi.wg_cfg_local_client_config_dest
       }}
     _wg_cfg_cc_owner: >-
       {{  wg_cfg_clients | dig(_wg_cfg_cc_name, 'owner') }}

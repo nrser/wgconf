@@ -12,6 +12,8 @@ from argparse import ArgumentParser
 from rich.console import Console
 from rich.panel import Panel
 from rich.padding import Padding
+from rich.markdown import Markdown
+from rich.table import Table
 
 
 from nansi import logging
@@ -33,6 +35,32 @@ def rel(path):
     except:
         return str(path)
 
+
+def ul(itr):
+    table = Table.grid(padding=(0,2))
+    table.add_column()
+    table.add_column()
+
+    for entry in itr:
+        table.add_row(
+            f"-",
+            f"[underline blue]{entry}[/]"
+        )
+
+    return table
+
+def ol(itr):
+    table = Table.grid(padding=(0,2))
+    table.add_column()
+    table.add_column()
+
+    for index, entry in enumerate(itr):
+        table.add_row(
+            f"{index + 1}.",
+            f"[underline blue]{entry}[/]"
+        )
+
+    return table
 
 @LOG.inject
 def is_doctest(path, *, log=LOG):
@@ -83,8 +111,10 @@ def test(name, cmd, *, log=LOG):
         status=r.returncode,
         len_stdout=len(r.stdout)
     )
-    if r.returncode == 0 and len(r.stdout) == 0:
+    if r.returncode == 0 and not r.stderr:
         C.print(":white_check_mark:", name)
+        if r.stdout:
+            C.print(Panel(Padding(r.stdout, 1), title=f"STDOUT {name}"))
         return True
     else:
         if r.stdout:
@@ -94,16 +124,24 @@ def test(name, cmd, *, log=LOG):
         C.print(":x:", name)
         return False
 
+
 @LOG.inject
-def test_module(module, *, log=LOG):
+def test_module(module, *, verbose: bool=False, log=LOG):
     log.debug("Testing MODULE...", module=module)
-    return test(module, ["python", "-m", module])
+    cmd = ["python", "-m", module]
+    if verbose:
+        cmd.append("-v")
+    return test(module, cmd)
 
 
 @LOG.inject
-def test_file(path, *, log=LOG):
+def test_file(path, *, verbose: bool=False, log=LOG):
     log.debug("Testing FILE (Ansible plugin)...", path=path)
-    return test(rel(path), ["python", "-m", "doctest", path])
+    cmd = ["python", "-m", "doctest"]
+    if verbose:
+        cmd.append("-v")
+    cmd.append(path)
+    return test(rel(path), cmd)
 
 
 def is_nansi_module(path):
@@ -129,6 +167,11 @@ def main(*, log=LOG):
         help="Quit after first failure"
     )
     parser.add_argument(
+        "-v", "--verbose",
+        action="store_true",
+        help="Speak up"
+    )
+    parser.add_argument(
         "targets",
         nargs="*",
         help="Specific module names or file paths to run"
@@ -150,27 +193,32 @@ def main(*, log=LOG):
         failures.append(path)
 
     if len(args.targets) == 0:
+
         log.info("Testing all modules and plugins...")
+
         for module, path in nansi_modules():
             rel_path = rel(path)
-            if not test_module(module):
+            if not test_module(module, verbose=args.verbose):
                 failed(rel_path)
             count += 1
         for path in plugins():
             rel_path = rel(path)
-            if not test_file(path):
+            if not test_file(path, verbose=args.verbose):
                 failed(path)
             count += 1
     else:
-        log.info("Targets list specified", targets=args.targets)
-        for path in args.targets:
+        targets = list(map(rel, args.targets))
+
+        log.info("Specific target(s) given", targets=ol(targets))
+
+        for path in targets:
             rel_path = rel(path)
             if is_nansi_module(path):
-                if not test_module(module_for(path)):
+                if not test_module(module_for(path), verbose=args.verbose):
                     failed(rel_path)
                 count += 1
             else:
-                if not test_file(path):
+                if not test_file(path, verbose=args.verbose):
                     failed(rel_path)
                 count += 1
 

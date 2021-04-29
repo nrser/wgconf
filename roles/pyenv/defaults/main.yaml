@@ -1,6 +1,6 @@
 # Default location for system (as root) installs, since `/root` is generally not 
 # world-readable.
-pyenv_system_root: /usr/local/pyenv
+pyenv_system_root: /opt/pyenv
 
 # Usual spot for users
 pyenv_user_root: "{{ ansible_facts.env.HOME }}/.pyenv"
