@@ -35,10 +35,6 @@ class SystemdUnit(ArgsBase):
     def file_path(self) -> str:
         return connect(self.file_dir, self.filename)
 
-    @property
-    def config_dir(self) -> str:
-        return connect(self.configs_dir, self.name)
-
 
 class ActionModule(ComposeAction):
 
@@ -67,5 +63,5 @@ class ActionModule(ComposeAction):
         self.tasks.file(path=unit.file_path, state="absent")
 
     def compose(self):
-        service = SystemdUnit(self._task.args, self._task_vars)
+        service = SystemdUnit(self._task.args, self)
         getattr(self, f"state_{service.state}")(service)
