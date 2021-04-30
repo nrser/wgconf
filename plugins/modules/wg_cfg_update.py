@@ -19,10 +19,9 @@ ARGUMENT_SPEC = dict(
     peers               = opt(type='dict'),
     clients             = opt(type='dict'),
     wg_bin_path         = opt(type='path'),
-    interface_defaults  = opt(type='dict', default={}),
     client_defaults     = opt(type='dict', default={}),
     peer_defaults       = opt(type='dict', default={}),
-    client_config_dir   = opt(type='path'),
+    clients_dir         = opt(type='path'),
 )
 
 CONFIG_KWDS = {'hostname', 'name', 'dir', 'public_address', 'wg_bin_path'}
@@ -55,18 +54,12 @@ def main():
         if k in CONFIG_KWDS and mod.params[k] is not None
     })
 
-    interface_defaults, peer_defaults, client_defaults = (
+    peer_defaults, client_defaults = (
         {k: v for k, v in d.items() if v is not None}
-        for d in (
-            mod.params[arg]
-            for arg
-            in ('interface_defaults', 'peer_defaults', 'client_defaults')
-        )
+        for d in (mod.params['peer_defaults'], mod.params['client_defaults'])
     )
 
-    config.update_interface(
-        **{**interface_defaults, **mod.params['interface']}
-    )
+    config.update_interface(**mod.params['interface'])
 
     if mod.params.get('clients') is not None:
         client_configs = config.update_clients({
@@ -76,8 +69,8 @@ def main():
         })
 
         if len(client_configs) > 0:
-            if client_config_dir := mod.params['client_config_dir']:
-                cc_dir = Path(client_config_dir)
+            if clients_dir := mod.params['clients_dir']:
+                cc_dir = Path(clients_dir)
             else:
                 cc_dir = Path(mod.params['dir']) / 'clients'
 

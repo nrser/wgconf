@@ -1,5 +1,4 @@
 from typing import *
-import re
 from collections import abc
 
 K = TypeVar('K')
@@ -180,6 +179,9 @@ def last(itr: Iterable[T]) -> Optional[T]:
 
 def pick(mapping: Mapping[K, V], keys: Container[K]) -> Dict[K, V]:
     return {key: value for key, value in mapping.items() if key in keys}
+
+def omit(mapping: Mapping[K, V], keys: Container[K]) -> Dict[K, V]:
+    return {key: value for key, value in mapping.items() if key not in keys}
 
 def dig(target: Diggable, *key_path: Sequence):
     '''Like Ruby - get the value at a key-path, or `None` if any keys in the

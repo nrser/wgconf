@@ -5,15 +5,19 @@ from pathlib import Path
 import shlex
 
 from nansi import logging
-from nansi.plugins.action.args.jsos import jsos_for
+from nansi.plugins.action.args.arg import autocast
+from nansi.plugins.action.args.jsos import JSOSType, jsos_for
 from nansi.plugins.action.compose import ComposeAction
 from nansi.plugins.action.args import Arg, ArgsBase
 from nansi.constants import REPO_ROOT
 from nansi.utils.decorators import lazy_property
+from nansi.utils.collections import pick
 
 LOG = logging.getLogger(__name__)
 WGCONF_ROOT = REPO_ROOT / "packages" / "wgconf"
 WGCONF_NAME = "wgconf"
+
+ROLE_DIR = REPO_ROOT / "roles" / "wireguard" / "config"
 
 
 def from_var(name):
@@ -86,11 +90,11 @@ class HookScript(ArgsBase):
         # Relative paths are relative to `hooks_dir`
         return self.hooks_dir / self.dest
 
-    @lazy_property
+    @property
     def dest_dir(self) -> Path:
         return self.full_dest.parent
 
-    @lazy_property
+    @property
     def invocation(self) -> str:
         # pylint: disable=no-member
         return shlex.join(
@@ -120,18 +124,13 @@ class HookArg(Arg):
     def cast(self, instance, value):
         if isinstance(value, Mapping):
             return HookScript(
-                values={**value, "hooks_dir": instance.hooks_dir},
+                values={**value, "hooks_dir": instance.parent.hooks_dir},
                 parent=instance,
             )
         return value
 
 
 class InterfaceUpdate(ArgsBase):
-    def cast_hooks_dir(self, arg, value):
-        if isinstance(value, str):
-            return Path(value.format(self=self))
-        return value
-
     name = Arg(Optional[str])
     description = Arg(Optional[str])
     address = Arg.zero_or_more(str)
@@ -141,16 +140,10 @@ class InterfaceUpdate(ArgsBase):
     table = Arg(Union[None, int, str])
     mtu = Arg(Optional[int])
     pre_up = HookArg()
-    post_up = HookArg(default=dict(src="post_up.sh"))
+    post_up = HookArg(default=dict(src=(ROLE_DIR / "files" / "post_up.sh")))
     pre_down = HookArg()
-    post_down = HookArg(default=dict(src="post_down.sh"))
+    post_down = HookArg(default=dict(src=(ROLE_DIR / "files" / "post_down.sh")))
     save_config = Arg(Optional[bool])
-
-    hooks_dir = Arg(
-        type=Path,
-        default="{self.parent.dir}/hooks",
-        cast=cast_hooks_dir,
-    )
 
     @property
     def hook_scripts(self) -> List[HookScript]:
@@ -204,31 +197,39 @@ class ClientUpdate(ClientBase):
 
 
 class Args(ArgsBase):
+    def cast_hooks_dir(self, arg, value):
+        if isinstance(value, str):
+            return Path(value.format(self=self))
+        return value
+
     state = Arg(Literal["present", "absent"], "present")
 
     name = Arg(str, "wg0")
     hostname = Arg(str, from_var("inventory_hostname"))
-    dir = Arg(str, "/etc/wireguard")
+    dir = Arg(Path, "/etc/wireguard", cast=cast_path)
     public_address = Arg(Optional[str])
-    wg_bin_path = Arg(Optional[str])
+    wg_bin_path = Arg(Optional[Path], cast=cast_path)
     network_interface = Arg(str, "eth0")
 
     interface = Arg(InterfaceUpdate)
 
     peers = Arg(Dict[str, PeerUpdate], {}, cast=dict_of(PeerUpdate))
-    peer_defaults = Arg(Optional[PeerDefaults], cast=opt_of(PeerDefaults))
+    peer_defaults = Arg(PeerDefaults, {}, cast=autocast)
 
     clients = Arg(Dict[str, ClientUpdate], {}, cast=dict_of(ClientUpdate))
-    client_defaults = Arg(Optional[ClientDefaults], cast=opt_of(ClientDefaults))
+    client_defaults = Arg(ClientDefaults, {}, cast=autocast)
 
-    fetch_clients_to = Arg(Optional[str])
-    copy_build_to = Arg(str, "/tmp")
+    fetch_clients_to = Arg(Optional[Path], cast=cast_path)
+    copy_build_to = Arg(Path, "/tmp", cast=cast_path)
     force_build = Arg(bool, False)
 
     python_version = Arg(str, "3.8.5")
     python_bin_dir = Arg(Path, default_property, cast=cast_path)
     python_executable = Arg(Path, default_property, cast=cast_path)
     pip_executable = Arg(Path, default_property, cast=cast_path)
+
+    hooks_dir = Arg(Path, default_property, cast=cast_path)
+    clients_dir = Arg(Optional[Path], cast=cast_path)
 
     @property
     def pyenv_root(self) -> Path:
@@ -246,6 +247,33 @@ class Args(ArgsBase):
     def default_pip_executable(self) -> Path:
         return self.python_bin_dir / "pip"
 
+    @property
+    def default_hooks_dir(self) -> Path:
+        return self.dir / "hooks"
+
+    @property
+    def default_clients_dir(self) -> Path:
+        return self.dir / "clients"
+
+    @property
+    def for_wg_cfg_update(self) -> Dict[str, JSOSType]:
+        return pick(
+            self.to_jsos(),
+            {
+                "name",
+                "hostname",
+                "dir",
+                "public_address",
+                "wg_bin_path",
+                "clients_dir",
+                "interface",
+                "peers",
+                "clients",
+                "peer_defaults",
+                "client_defaults",
+            },
+        )
+
 
 class ActionModule(ComposeAction):
 
@@ -254,22 +282,63 @@ class ActionModule(ComposeAction):
     # Tracks if the build happen or not
     did_build: bool = False
 
-    @lazy_property
+    # Computed Properties
+    # ========================================================================
+
+    @lazy_property # Expensive, so only do it once
     def wgconf_version(self) -> str:
         with (WGCONF_ROOT / "VERSION").open("r") as file:
             return file.read().strip()
 
-    @lazy_property
+    @property
     def wgconf_wheel_filename(self) -> str:
         return f"{WGCONF_NAME}-{self.wgconf_version}-py3-none-any.whl"
 
-    @lazy_property
+    @property
     def wgconf_wheel_path(self) -> Path:
         return WGCONF_ROOT / "dist" / self.wgconf_wheel_filename
 
-    @lazy_property
+    @property
     def wgconf_wheel_dest(self) -> Path:
-        return Path(self.args.copy_build_to) / self.wgconf_wheel_filename
+        return self.args.copy_build_to / self.wgconf_wheel_filename
+
+    # Entry Point
+    # ========================================================================
+
+    def compose(self):
+        """
+        Hands off to the _state method_ identified by [Args#state][], either
+        of:
+
+        1.  [#present](ActionModule.present)
+        1.  [#absent](ActionModule.absent) (TODO — just raises right now)
+
+        [Args#state]: .Args.state
+        """
+        self.args = Args(self._task.args, self)
+        getattr(self, self.args.state)()
+
+    # State Methods
+    # ========================================================================
+    #
+    # Called depending on the <Args.state>; responsible for invoking the steps.
+    #
+
+    def present(self):
+        self.build_wgconf_wheel()
+        self.copy_wgconf_wheel()
+        self.install_wgconf()
+        self.copy_hook_scripts()
+        self.configure()
+
+    def absent(self):
+        raise NotImplementedError("TODO")
+
+    # Composition Steps
+    # ========================================================================
+    #
+    # Broken out into individual methods to make grasping pieces a bit easier.
+    #
 
     def build_wgconf_wheel(self):
         if self.args.force_build or not self.wgconf_wheel_path.exists():
@@ -333,29 +402,16 @@ class ActionModule(ComposeAction):
             )
 
     def configure(self):
-        self.tasks.wg_cfg_update(
-            name=self.args.name,
-            hostname=self.args.hostname,
-            dir=self.args.dir,
-            public_address=self.args.public_address,
-            wg_bin_path=self.args.wg_bin_path,
-            interface=jsos_for(self.args.interface),
-            peers=jsos_for(self.args.peers),
-            peer_defaults=jsos_for(self.args.peer_defaults),
-            clients=jsos_for(self.args.clients),
-            client_defaults=jsos_for(self.args.client_defaults),
-        )
+        self.tasks["nrser.nansi.wg_cfg_update"].add_vars(
+            ansible_python_interpreter=str(self.args.python_executable),
+        )(**self.args.for_wg_cfg_update)
 
-    def present(self):
-        self.build_wgconf_wheel()
-        self.copy_wgconf_wheel()
-        self.install_wgconf()
-        self.copy_hook_scripts()
-        self.configure()
+    # Overrides
+    # =========================================================================
+    #
+    # Customization of <nansi.plugins.action.ComposeAction> behaviors.
+    #
 
-    def absent(self):
-        raise NotImplementedError("TODO")
+    def append_result(self, task, action, result):
+        return super().append_result(task, action, result)
 
-    def compose(self):
-        self.args = Args(self._task.args, self)
-        getattr(self, self.args.state)()

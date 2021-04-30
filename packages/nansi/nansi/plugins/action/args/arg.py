@@ -1,6 +1,6 @@
 from __future__ import annotations
 from inspect import isclass
-from typing import Any, Callable, Generic, Iterable, List, Optional, TypeVar, Union
+from typing import Any, Callable, Iterable, List, Optional, TypeVar, Union
 
 from nansi.proper import Prop
 from nansi.utils.typings import (

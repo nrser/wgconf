@@ -20,8 +20,64 @@ from rich.traceback import Traceback
 from rich.pretty import Pretty
 from rich.highlighter import ReprHighlighter
 
+DEFAULT_VALUE_TYPE_SPLIT_MIN = 24
+
+
 def is_rich(x: Any) -> bool:
     return isinstance(x, (ConsoleRenderable, RichCast))
+
+
+def value_type(value: Any, *, split_min: int=DEFAULT_VALUE_TYPE_SPLIT_MIN):
+    typ = type(value)
+    if hasattr(typ, "__name__"):
+        # Just omit the module name for now, it gets to take up too much
+        # space...
+
+        # if (
+        #     hasattr(typ, "__module__")
+        #     and typ.__module__ != "builtins"
+        # ):
+        #     if len(typ.__module__) + len(typ.__name__) < split_min:
+        #         return f"{typ.__module__}.{typ.__name__}"
+        #     else:
+        #         return f"{typ.__module__}\n.{typ.__name__}"
+        # else:
+        #     return typ.__name__
+
+        return typ.__name__
+    else:
+        return Pretty(typ)
+
+
+def table(mapping: Mapping) -> Table:
+    tbl = Table.grid(padding=(0, 1))
+    tbl.expand = True
+    tbl.add_column(style=Style(color="blue", italic=True))
+    tbl.add_column(style=Style(color="#4ec9b0", italic=True))
+    tbl.add_column()
+    for key in sorted(mapping.keys()):
+        value = mapping[key]
+        if is_rich(value):
+            rich_value_type = None
+            rich_value = value
+        else:
+            rich_value_type = value_type(value)
+            if isinstance(value, str):
+                rich_value = value
+            elif (
+                inspect.isfunction(value)
+                and hasattr(value, "__module__")
+                and hasattr(value, "__name__")
+            ):
+                rich_value = ReprHighlighter()(
+                    f"<function {value.__module__}.{value.__name__}>"
+                )
+            else:
+                rich_value = Pretty(value)
+        tbl.add_row(key, rich_value_type, rich_value)
+    return tbl
+
+
 class RichHandler(logging.Handler):
     """\
     A `logging.Handler` extension that uses [rich][] to print pretty nice log
@@ -120,42 +176,7 @@ class RichHandler(logging.Handler):
         output.add_row(None, msg)
 
         if hasattr(record, "data") and record.data:
-            table = Table.grid(padding=(0, 1))
-            table.expand = True
-            table.add_column(style=Style(color="blue", italic=True))
-            table.add_column(style=Style(color="#4ec9b0", italic=True))
-            table.add_column()
-            for key, value in record.data.items():
-                if is_rich(value):
-                    rich_value_type = None
-                    rich_value = value
-                else:
-                    value_type = type(value)
-                    if hasattr(value_type, "__name__"):
-                        if (
-                            hasattr(value_type, "__module__") and
-                            value_type.__module__ != "builtins"
-                        ):
-                            rich_value_type = \
-                                f"{value_type.__module__}.{value_type.__name__}"
-                        else:
-                            rich_value_type = value_type.__name__
-                    else:
-                        rich_value_type = Pretty(value_type)
-                    if isinstance(value, str):
-                        rich_value = value
-                    elif (
-                        inspect.isfunction(value) and
-                        hasattr(value, "__module__") and
-                        hasattr(value, "__name__")
-                    ):
-                        rich_value = ReprHighlighter()(
-                            f"<function {value.__module__}.{value.__name__}>"
-                        )
-                    else:
-                        rich_value = Pretty(value)
-                table.add_row(key, rich_value_type, rich_value)
-            output.add_row(None, table)
+            output.add_row(None, table(record.data))
 
         if record.exc_info:
             output.add_row(None, Traceback.from_exception(*record.exc_info))

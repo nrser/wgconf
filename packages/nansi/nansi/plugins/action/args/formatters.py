@@ -13,10 +13,12 @@ def os_fact_format(string: str, ansible_facts, **extras) -> str:
 
 
 def os_fact_formatter(*extra_attrs):
-    def cast(args, _, string: str) -> str:
+    def cast(args, arg, string: str) -> str:
         return os_fact_format(
             string,
-            args.task_vars["ansible_facts"],
+            # Ansible facts shouldn't be templates that need rendering from my
+            # understanding, so we can use the raw values
+            args.vars.raw["ansible_facts"],
             **{name: getattr(args, name) for name in extra_attrs},
         )
 

@@ -1,5 +1,4 @@
 from __future__ import annotations
-import logging
 from abc import abstractmethod
 from typing import Dict, Optional
 
@@ -7,11 +6,12 @@ from ansible.plugins.action import ActionBase
 from ansible.errors import AnsibleError
 from ansible.playbook.task import Task
 
-import nansi.logging
+from nansi import logging
+from nansi.logging.rich_handler import table
 from nansi.template.var_values import VarValues
 
 
-LOG = log = logging.getLogger(__name__)
+LOG = logging.getLogger(__name__)
 
 
 class ComposedActionFailedError(RuntimeError):  # (AnsibleError):
@@ -125,9 +125,8 @@ class ComposeAction(ActionBase):
         self._task_vars = None
         self._result = None
         self._var_values = None
-        # self.args = None
 
-        nansi.logging.setup_for_display()
+        logging.setup_for_display()
 
         # self.log = logging.getLogger(
         #     f"{self.__class__.__module__}.{self.__class__.__name__}"
@@ -157,9 +156,15 @@ class ComposeAction(ActionBase):
         return "OK"
 
     def append_result(self, task, action, result):
-        if "results" not in self._result:
-            self._result["results"] = []
-        self._result["results"].append(result)
+        if "composed" not in self._result:
+            self._result["composed"] = []
+        self._result["composed"].append(
+            {
+                "task": task.action,
+                # "args": task.args,
+                "status": self.result_status(result),
+            }
+        )
 
     def has_changed(
         self,
@@ -196,7 +201,9 @@ class ComposeAction(ActionBase):
             `self._result` if needed.
         """
         status = self.result_status(result)
-        self.log.debug(f"Task `{task.action}` {status}", result=result)
+        self.log.debug(
+            f"Composed task `{task.action}` {status}", result=table(result)
+        )
         self.append_result(task, action, result)
         if (
             self.has_changed(task, action, result)
@@ -217,7 +224,9 @@ class ComposeAction(ActionBase):
         The relevant `Task`_, `ActionBase`_ and `result` `dict`_ are provided
         to allow realizing subclasses to make specific decisions.
         """
-        self.log.error(f"Task `{task.action}` FAILED", result=result)
+        self.log.error(
+            f"Composed task `{task.action}` FAILED", result=table(result)
+        )
 
         raise ComposedActionFailedError(
             result.get("msg", ""), task.action, action, result
@@ -263,7 +272,10 @@ class ComposeAction(ActionBase):
         """
 
     def run(self, tmp=None, task_vars=None):
-        self.log.debug("Starting run()...")
+        self.log.debug(
+            "Starting task composition...",
+            extra={"data": {"args": table(self._task.args)}}
+        )
 
         self._result = super().run(tmp, task_vars)
         self._result["changed"] = False
@@ -304,6 +316,8 @@ class ComposeAction(ActionBase):
             #
             raise AnsibleError(error.args[0], orig_exc=error) from error
 
+        self.log.debug("Task composition complete", result=table(self._result))
+
         return self._result
 
     def run_task(self, name, task_vars=None, /, **task_args):
@@ -326,14 +340,20 @@ class ComposeAction(ActionBase):
         )
 
         if action is None:
-            self.log.debug(f"Composing task `{name}`...", task_args=task_args)
+            self.log.debug(
+                f"Composing task `{name}`",
+                extra={"data": {"args": task_args}}
+            )
             result = self._execute_module(
                 name,
                 module_args=task_args,
                 task_vars=task_vars,
             )
         else:
-            self.log.debug(f"Composing action `{name}`...", task_args=task_args)
+            self.log.debug(
+                f"Composing action `{name}`",
+                extra={"data": {"args": task_args}}
+            )
             result = action.run(task_vars=task_vars)
 
         if result.get("failed", False):
