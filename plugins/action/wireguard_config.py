@@ -6,7 +6,7 @@ import shlex
 
 from nansi import logging
 from nansi.plugins.action.args.arg import autocast
-from nansi.plugins.action.args.jsos import JSOSType, jsos_for
+from nansi.plugins.action.args.jsos import JSOSType
 from nansi.plugins.action.compose import ComposeAction
 from nansi.plugins.action.args import Arg, ArgsBase
 from nansi.constants import REPO_ROOT
@@ -405,13 +405,4 @@ class ActionModule(ComposeAction):
         self.tasks["nrser.nansi.wg_cfg_update"].add_vars(
             ansible_python_interpreter=str(self.args.python_executable),
         )(**self.args.for_wg_cfg_update)
-
-    # Overrides
-    # =========================================================================
-    #
-    # Customization of <nansi.plugins.action.ComposeAction> behaviors.
-    #
-
-    def append_result(self, task, action, result):
-        return super().append_result(task, action, result)
 

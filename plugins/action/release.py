@@ -174,15 +174,6 @@ class Args(ArgsBase):
 
 class ActionModule(ComposeAction):
 
-    def append_result(self, task, action, result):
-        if "results" not in self._result:
-            self._result["results"] = []
-        self._result["results"].append({
-            'task': task.action,
-            'args': task.args,
-            'status': self.result_status(result),
-        })
-
     # Start putting these things in super... somehow?
     def exists(self, path: str) -> bool:
         return self.tasks.stat(path=path)["stat"]["exists"]

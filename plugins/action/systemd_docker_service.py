@@ -165,16 +165,6 @@ class SystemdDockerService(ArgsBase):
 
 
 class ActionModule(ComposeAction):
-    def append_result(self, task, action, result):
-        if "results" not in self._result:
-            self._result["results"] = []
-        self._result["results"].append(
-            {
-                "task": task.action,
-                "args": task.args,
-                "status": self.result_status(result),
-            }
-        )
 
     def state_present(self, service: SystemdDockerService):
         if len(service.config) > 0:

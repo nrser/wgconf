@@ -41,16 +41,6 @@ class SystemdUnit(ArgsBase):
 
 
 class ActionModule(ComposeAction):
-    def append_result(self, task, action, result):
-        if "results" not in self._result:
-            self._result["results"] = []
-        self._result["results"].append(
-            {
-                "task": task.action,
-                "args": task.args,
-                "status": self.result_status(result),
-            }
-        )
 
     def state_present(self, unit: SystemdUnit):
         unit_file = self.tasks.copy(
