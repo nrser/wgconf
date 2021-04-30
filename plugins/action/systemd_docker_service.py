@@ -34,7 +34,11 @@ class Config(OpenArgsBase):
         # return value
 
         if not isinstance(value, abc.Mapping):
-            raise CastTypeError(expected=abc.Mapping, given=value)
+            raise CastTypeError(
+                f"Expected `value` to be {abc.Mapping}, "
+                f"given {type(value)}: {repr(value)}",
+                arg=arg, value=value
+            )
 
         items = list(value.items())
 
