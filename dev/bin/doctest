@@ -144,7 +144,14 @@ def test_file(path, *, verbose: bool=False, log=LOG):
     return test(rel(path), cmd)
 
 
-def is_nansi_module(path):
+def is_nansi_module(target):
+    path = Path(target)
+    if not path.exists():
+        path = Path(target.replace(".", "/"))
+        if path.is_dir():
+            path = path / "__init__.py"
+        else:
+            path.suffix = ".py"
     try:
         Path(path).resolve().relative_to(NANSI_ROOT / "nansi")
     except ValueError:
@@ -211,16 +218,24 @@ def main(*, log=LOG):
 
         log.info("Specific target(s) given", targets=ol(targets))
 
-        for path in targets:
-            rel_path = rel(path)
-            if is_nansi_module(path):
-                if not test_module(module_for(path), verbose=args.verbose):
-                    failed(rel_path)
-                count += 1
+        for target in targets:
+            if Path(target).exists():
+                if is_nansi_module(target):
+                    if not test_module(module_for(target), verbose=args.verbose):
+                        failed(rel(target))
+                    count += 1
+                else:
+                    if not test_file(target, verbose=args.verbose):
+                        failed(rel(target))
+                    count += 1
             else:
-                if not test_file(path, verbose=args.verbose):
-                    failed(rel_path)
-                count += 1
+                if not test_module(target, verbose=args.verbose):
+                    path = NANSI_ROOT.joinpath(*target.split("."))
+                    if path.is_dir():
+                        path = path / "__init__.py"
+                    else:
+                        path = path.with_suffix(".py")
+                    failed(rel(path))
 
     if len(failures) == 0:
         log.info(f"All {count} file(s) PASSED")
