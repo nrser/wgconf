@@ -1,4 +1,23 @@
+from __future__ import annotations
+from typing import Any, Iterable, Type, Union
+
+from nansi.proper import Prop
+from nansi.utils.collections import each
+from nansi.utils.strings import coordinate
+
 class CastTypeError(TypeError):
+    @classmethod
+    def create(
+        cls,
+        prop: Prop,
+        value: Any,
+        expected_type: Union[Type, Iterable[Type]],
+    ) -> CastTypeError:
+        types_s = coordinate(each(Type, expected_type), "or")
+        message = f"Expected {types_s}; given type {type(value)}: {value}"
+        return cls(message, prop, value)
+
+
     # def __init__(self, *args, **kwds):
     #     args_map = dict(zip(["message", "expected", "given"], args))
     #     dups = set(args_map).intersection(kwds)

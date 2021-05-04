@@ -1,13 +1,12 @@
 from __future__ import annotations
 from pathlib import Path
-from os import PathLike
-from typing import Optional, Union, Iterable
+from typing import Optional, Union
 
 from nansi.utils import doctesting
 
-Pathable =  Union[str, Path, Iterable["Pathable"]]
+# Pathable =  Union[str, Path, Iterable["Pathable"]]
 
-def rel(path: PathLike, to: Optional[PathLike] = None) -> str:
+def rel(path: Union[str, Path], to: Optional[Union[str, Path]]=None) -> str:
     '''Relativize a path if it's a descendant, otherwise just return as-is.
 
     >>> rel(f"{Path.cwd()}/a/b/c")
@@ -20,9 +19,9 @@ def rel(path: PathLike, to: Optional[PathLike] = None) -> str:
     try:
         rel_path = Path(path).relative_to(to or Path.cwd())
         if rel_path:
-            return f"./{rel}"
+            return f"./{rel_path}"
     except:
         pass
-    return path
+    return str(path)
 
 doctesting.testmod(__name__)

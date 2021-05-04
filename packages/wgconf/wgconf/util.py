@@ -13,22 +13,16 @@ K = TypeVar('K')
 T = TypeVar('T')
 V = TypeVar('V')
 
-ScalarPropValue = NewType(
-    'ScalarPropValue',
-    Union[
-        str, # Most props
-        int, # `ListenPort`
-        bool, # `SaveConfig`
-    ] # type: ignore
-)
+ScalarPropValue = Union[
+    str, # Most props
+    int, # `ListenPort`
+    bool, # `SaveConfig`
+]
 
-PropValue = NewType(
-    'PropValue',
-    Union[
-        ScalarPropValue,
-        List[ScalarPropValue]
-    ] # type: ignore
-)
+PropValue = Union[
+    ScalarPropValue,
+    List[ScalarPropValue]
+]
 
 PropValues = NewType(
     'PropValues',

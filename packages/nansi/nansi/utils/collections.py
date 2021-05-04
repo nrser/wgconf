@@ -12,8 +12,8 @@ TKey        = TypeVar('TKey')
 TValue      = TypeVar('TValue')
 TAlias      = TypeVar('TAlias')
 
-Nope        = NewType('Nope', Union[None, Literal[False]]) # type: ignore
-Diggable    = NewType("Diggable", Union[Sequence, Mapping]) # type: ignore
+Nope        = Union[None, Literal[False]]
+Diggable    = Union[Sequence, Mapping]
 
 class NotFoundError(Exception):
     pass
@@ -266,49 +266,84 @@ def bury(
     return root
 
 def each(
-    types: Union[Type, Iterable[Type]],
+    types: Union[Type[T], Iterable[Type[T]]],
     x: Union[None, T, Iterable[T]],
 ) -> Generator[T, None, None]:
     # pylint: disable=redefined-outer-name
     '''
     Iterate over "zero or more" of some type `T`, where:
 
-    1.  Zero `T` can also be represented by `None`.
-    2.  One `T` is anything is *either*:
-        1.  *Not* an `Iterable` (since then we can't iterate over it!).
-        2.  An instance of the `skip` type(s) (defaults to `(str, bytes)`).
+    1.  An `x` of `None` represents no items (does not yield).
+    2.  An `x` that is an instance of `T` represents a single item (yields
+        once).
+    3.  Anything else is assumed to be an <typing.Iterable> of `T` and yielded
+        from. Items are _not_ checked to be instances of `T`.
 
-            > This is a practical matter, as I can't see any *actual* difference
-            > between a `str` and a `list`, though lists of strings are *very*
-            > common and I have *never* wanted to iterate over their charasters
-            > (as would happen without this exception).
-    3.  Everything else is yielded from (since we already know it's an
-        `Iterable`).
+    ## Examples
 
-    If the `T` in question is an `Iterable` you will need to add it to `skip`
-    to get the right behavior.
+    1.  ### Looping over nothing ###
 
-    >>> [_ for _ in each(str, 'blah')]
-    ['blah']
+        >>> list(each(str, None))
+        []
 
-    >>> [_ for _ in each(str, ['blah', 'blah', 'blah me'])]
-    ['blah', 'blah', 'blah me']
+        >>> list(each(str, []))
+        []
 
-    >>> [_ for _ in each(str, None)]
-    []
+    2.  ### Looping over values of an <typing.Iterable> type ###
 
-    >>> [_ for _ in each(tuple, (1, 2))]
-    [(1, 2)]
+        <builtins.str> is _iterable_, but since `T=str` it is treated as a
+        _value_:
 
-    >>> [_ for _ in each(dict, {'name': 'NRSER', 'version': '0.1.0'})]
-    [{'name': 'NRSER', 'version': '0.1.0'}]
+        >>> list(each(str, 'blah'))
+        ['blah']
+
+        Since iterating <builtins.str> yields <builtins.str> items, the only way
+        to iterate over each character is to provide `Any` as the `types`,
+        which falls back to testing if `x` is <typing.Iterable>:
+
+        >>> list(each(Any, 'blah'))
+        ['b', 'l', 'a', 'h']
+
+        These should hopefully be what you would expect:
+
+        >>> list(each(str, ['blah', 'blah', 'blah me']))
+        ['blah', 'blah', 'blah me']
+
+        >>> list(each(tuple, (1, 2)))
+        [(1, 2)]
+
+        >>> list(each(dict, {'name': 'NRSER', 'version': '0.1.0'}))
+        [{'name': 'NRSER', 'version': '0.1.0'}]
+
+    3.  Absence of type checking when yielding from an <typing.Iterable>:
+
+        This will work, even through the <typing.Iterable> provided does _not_
+        contains elements of type `T` (in violation of the type contract):
+
+        >>> list(each(str, [1, 2, 3]))
+        [1, 2, 3]
+
+    4.  Useful with types as well as values:
+
+        >>> list(each(Type, str))
+        [<class 'str'>]
+
+        >>> list(each(Type, [str, bytes]))
+        [<class 'str'>, <class 'bytes'>]
+
     '''
     if x is None:
         return
-    if isinstance(x, types):
-        yield x
+    if types is Any:
+        if isinstance(x, Iterable):
+            yield from x
+        else:
+            yield x
     else:
-        yield from x
+        if isinstance(x, types):
+            yield x
+        else:
+            yield from x
 
 def iter_flat(itr: Iterable, skip=(str, bytes)):
     for entry in itr:

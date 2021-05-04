@@ -5,10 +5,11 @@ from pathlib import Path
 import shlex
 
 from nansi import logging
-from nansi.plugins.action.args.arg import autocast
+from nansi.plugins.action.args.arg import Arg
+from nansi.plugins.action.args.base import ArgsBase
+from nansi.plugins.action.args.casters import autocast
 from nansi.plugins.action.args.jsos import JSOSType
 from nansi.plugins.action.compose import ComposeAction
-from nansi.plugins.action.args import Arg, ArgsBase
 from nansi.constants import REPO_ROOT
 from nansi.utils.decorators import lazy_property
 from nansi.utils.collections import pick
@@ -24,23 +25,7 @@ def from_var(name):
     return lambda args, _arg: args.vars[name]
 
 
-def dict_of(args_class):
-    def _dict_of(args, _arg, value):
-        return {k: args_class(v, args) for k, v in value.items()}
-
-    return _dict_of
-
-
-def opt_of(args_class):
-    def _opt_of(args, _arg, value):
-        if value is None:
-            return None
-        return args_class(value, args)
-
-    return _opt_of
-
-
-def cast_path(_args, _arg, value):
+def cast_path(args, arg, value):
     if value is None:
         return None
     if isinstance(value, str):
@@ -213,10 +198,10 @@ class Args(ArgsBase):
 
     interface = Arg(InterfaceUpdate)
 
-    peers = Arg(Dict[str, PeerUpdate], {}, cast=dict_of(PeerUpdate))
+    peers = Arg(Dict[str, PeerUpdate], {}, cast=autocast)
     peer_defaults = Arg(PeerDefaults, {}, cast=autocast)
 
-    clients = Arg(Dict[str, ClientUpdate], {}, cast=dict_of(ClientUpdate))
+    clients = Arg(Dict[str, ClientUpdate], {}, cast=autocast)
     client_defaults = Arg(ClientDefaults, {}, cast=autocast)
 
     fetch_clients_to = Arg(Optional[Path], cast=cast_path)
