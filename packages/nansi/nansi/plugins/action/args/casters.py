@@ -1,17 +1,21 @@
-from typing import Any, Iterable
+from typing import Any, Iterable, Optional
 from pathlib import Path
-from nansi.plugins.action.args.errors import CastTypeError
 
 from nansi.utils import doctesting
-from nansi.utils.casting import CastError, deep_cast
+from nansi.utils.casting import CastError, map_cast
+from nansi.utils import text
 
 from .base import ArgsBase
 from .arg import Arg
 
 
-def cast_path(args: ArgsBase, arg: Arg, value: Any) -> Path:
+def cast_path(args: ArgsBase, arg: Arg, value: Any) -> Optional[Path]:
     if value is None:
         return None
+    return _cast_path(value)
+
+
+def _cast_path(value: Any) -> Path:
     if isinstance(value, str):
         return Path(value)
     if isinstance(value, Path):
@@ -19,7 +23,10 @@ def cast_path(args: ArgsBase, arg: Arg, value: Any) -> Path:
     if isinstance(value, Iterable):
         return Path(*value)
     raise CastError(
-
+        f"Can't cast to Path, expected {text.one_of(str, Path, Iterable)}, "
+        f"given {text.arg('value', value)}",
+        value,
+        Path,
     )
 
 
@@ -44,13 +51,14 @@ def autocast(args: ArgsBase, arg: Arg, value: Any):
         PosixPath('/usr/local/bin')
 
     """
-    return deep_cast(
+    return map_cast(
         value=value,
         expected_type=arg.type,
         handlers={
             ArgsBase: lambda v, t: t(v, parent=args),
-            Path: lambda v, t: cast_path(args, arg, v),
-        }
+            Path: lambda v, t: _cast_path(v),
+        },
     )
+
 
 doctesting.testmod(__name__)

@@ -3,7 +3,7 @@ from typing import Any, Iterable, Type, Union
 
 from nansi.proper import Prop
 from nansi.utils.collections import each
-from nansi.utils.strings import coordinate
+from nansi.utils.strings import coord
 
 class CastTypeError(TypeError):
     @classmethod
@@ -13,7 +13,7 @@ class CastTypeError(TypeError):
         value: Any,
         expected_type: Union[Type, Iterable[Type]],
     ) -> CastTypeError:
-        types_s = coordinate(each(Type, expected_type), "or")
+        types_s = coord(each(Type, expected_type), "or")
         message = f"Expected {types_s}; given type {type(value)}: {value}"
         return cls(message, prop, value)
 

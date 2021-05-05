@@ -269,7 +269,6 @@ def each(
     types: Union[Type[T], Iterable[Type[T]]],
     x: Union[None, T, Iterable[T]],
 ) -> Generator[T, None, None]:
-    # pylint: disable=redefined-outer-name
     '''
     Iterate over "zero or more" of some type `T`, where:
 

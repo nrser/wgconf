@@ -51,7 +51,7 @@ def connect(*parts, seperator: str = "/") -> str:
     )
 
 
-def coordinate(
+def coord(
     seq: Sequence,
     conjunction: str="and",
     *,
@@ -63,32 +63,32 @@ def coordinate(
 
     1.  Empty list
 
-        >>> coordinate([])
+        >>> coord([])
         '[empty]'
 
     2.  List with a single item
 
-        >>> coordinate([1])
+        >>> coord([1])
         '1'
 
     3.  List with two items
 
-        >>> coordinate([1, 2])
+        >>> coord([1, 2])
         '1 and 2'
 
     4.  List with more than two items
 
-        >>> coordinate([1, 2, 3])
+        >>> coord([1, 2, 3])
         '1, 2 and 3'
 
     5.  Defaults to `repr` to cast to string
 
-        >>> coordinate(['a', 'b', 'c'], to_s=repr)
+        >>> coord(['a', 'b', 'c'], to_s=repr)
         "'a', 'b' and 'c'"
 
     6.  Providing an alternative cast function
 
-        >>> coordinate(['a', 'b', 'c'], to_s=lambda x: f"`{x}`")
+        >>> coord(['a', 'b', 'c'], to_s=lambda x: f"`{x}`")
         '`a`, `b` and `c`'
     """
     length = len(seq)

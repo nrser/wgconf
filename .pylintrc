@@ -14,4 +14,5 @@ disable=unused-argument,
         missing-class-docstring,
         trailing-whitespace,
         missing-module-docstring,
-        invalid-name
+        invalid-name,
+        redefined-outer-name

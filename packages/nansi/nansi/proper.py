@@ -10,7 +10,7 @@ from typeguard import check_type
 
 from nansi import logging
 
-# pylint: disable=redefined-builtin,invalid-name,redefined-outer-name
+# pylint: disable=redefined-builtin,invalid-name
 
 LOG = logging.getLogger(__name__)
 

@@ -16,7 +16,7 @@ from nansi.utils.typings import (
     test_type,
     get_args,
 )
-from nansi.utils.strings import coordinate
+from nansi.utils.strings import coord
 from nansi import logging
 from nansi.utils import doctesting
 
@@ -49,7 +49,7 @@ def _cast_dict(
 
     expected_key_type, expected_value_type = expected_types
     return {
-        deep_cast(item_key, expected_key_type, handlers): deep_cast(
+        map_cast(item_key, expected_key_type, handlers): map_cast(
             item_value, expected_value_type, handlers
         )
         for item_key, item_value in value.items()
@@ -71,12 +71,23 @@ def _cast_list(
             Sequence,
         )
 
-    return [deep_cast(item, expected_item_type, handlers) for item in value]
+    return [map_cast(item, expected_item_type, handlers) for item in value]
 
 
-def deep_cast(value: Any, expected_type: Type, handlers: THandlers) -> Any:
+def map_cast(value: Any, expected_type: Type, handlers: THandlers) -> Any:
     """
-    TODO
+    Cast values using a mapping of type → cast function.
+
+    Descends into <builtins.list> and <builtins.dict> collections, mapping
+    items, keys and values according to their expected types.
+
+    Before any casting, tests if the value satisfies the expected type — see
+    <nansi.utils.typings.test_type>, which wraps <typeguard.check_type>. If the
+    test passes, the value is simply returned. This is meant to help avoid
+    unnecessary and unexpected casts.
+
+    When more than one type are acceptable (<typing.Union>), the acceptable
+    types are tried in iteration order; first cast to succeed wins.
 
     Examples
     --------------------------------------------------------------------------
@@ -85,7 +96,7 @@ def deep_cast(value: Any, expected_type: Type, handlers: THandlers) -> Any:
 
     Casting a <builtins.str> to a <builtins.int>:
 
-    >>> deep_cast(
+    >>> map_cast(
     ...     value           = "123",
     ...     expected_type   = int,
     ...     handlers        = {
@@ -103,7 +114,7 @@ def deep_cast(value: Any, expected_type: Type, handlers: THandlers) -> Any:
     `Union[int, str]` the value is returned directly:
 
     >>> from typing import Union
-    >>> deep_cast(
+    >>> map_cast(
     ...     value           = "123",
     ...     expected_type   = Union[int, str],
     ...     handlers        = {
@@ -117,7 +128,7 @@ def deep_cast(value: Any, expected_type: Type, handlers: THandlers) -> Any:
 
     <builtins.int> comes first, so it wins here:
 
-    >>> deep_cast(
+    >>> map_cast(
     ...     value           = "123",
     ...     expected_type   = Union[int, float],
     ...     handlers        = {
@@ -130,7 +141,7 @@ def deep_cast(value: Any, expected_type: Type, handlers: THandlers) -> Any:
     Reverse the order in the union to `float, int` and <builtins.float> will
     win:
 
-    >>> deep_cast(
+    >>> map_cast(
     ...     value           = "123",
     ...     expected_type   = Union[float, int],
     ...     handlers        = {
@@ -145,7 +156,7 @@ def deep_cast(value: Any, expected_type: Type, handlers: THandlers) -> Any:
     Walks into <typing.List> and <typing.Dict> collections:
 
     >>> from pathlib import Path
-    >>> deep_cast(
+    >>> map_cast(
     ...     value           = {"PATH": ["/usr/local/bin", "/usr/bin", "/bin"]},
     ...     expected_type   = Dict[str, List[Path]],
     ...     handlers        = {
@@ -213,7 +224,7 @@ def deep_cast(value: Any, expected_type: Type, handlers: THandlers) -> Any:
     # Failed to cast, raise an error
 
     member_types = tuple(each_member_type(expected_type))
-    types_s = coordinate(member_types, "or")
+    types_s = coord(member_types, "or")
 
     raise CastError(
         f"Expected {types_s}, given {type(value)} of {value}",
