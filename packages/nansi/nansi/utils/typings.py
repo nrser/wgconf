@@ -1,24 +1,21 @@
-# Adapted from the core of `typeguard` 2.9.1, specifically:
+# Originally adapted from the core of `typeguard` 2.9.1, specifically:
 #
 # https://github.com/agronholm/typeguard/blob/0c7d1e7df87e3cf8de6e407e2ee04df21691280d/typeguard/__init__.py
 #
-# Chopped down to just what is needed to type check option values in Python
-# 3.8+, with ability to decode them from strings added on.
+# Augmented with collection-recursive casting.
 #
 
-from inspect import isclass, isfunction
+from inspect import isfunction
 from typing import (
     Any,
     Dict,
     Generator,
     List,
-    Mapping,
-    Sequence,
     Tuple,
     Type,
     Union,
-    get_origin as _get_origin,
     get_args as _get_args,
+    get_origin as _get_origin,
 )
 
 from typeguard import check_type
@@ -138,78 +135,11 @@ def is_optional(t) -> bool:
     return t is Union and NoneType in _get_args(root_type)
 
 
-def each_union_member(t: Type) -> Generator[Type, None, None]:
-    root_type = get_root_type(t)
-    if root_type is Union:
-        raise ValueError(
-            "Expected root type of argument `t` to be `typing.Union`, "
-            f"given {t} of type {type(t)} with root type {root_type}"
-        )
-    for member in map(get_root_type, get_args(t)):
-        if member is Union:
-            yield from each_union_member(member)
-        else:
-            yield member
-
-
 def each_member_type(t: Type) -> Generator[Type, None, None]:
-    if is_union(t):
-        yield from each_union_member(t)
+    if get_root_type(t) is Union:
+        yield from get_args(t)
     else:
-        yield get_root_type(t)
-
-
-def cast_values(value: Any, expected_type: Type, cast_map):
-    # If the value satisfies the expected type then we use it. This is meant to
-    # help prevent unnecessary and unexpected casts
-    if test_type(value, expected_type):
-        return value
-
-    # Otherwise we try to cast. Casting is first-come, first-serve over the
-    # "member types":
-    #
-    # 1.  When `expected_type` is an alias to a <typing.Union>, the member types
-    #     are the _arg types_ of the <typing.Union> (unwrapped).
-    #
-    # 2.  Otherwise, the single member type is the unwrapped, de-aliased type
-    #     extracted from the `expected_type`.
-    #
-    for member_type in each_member_type(expected_type):
-        # 1.  Collections — recursively map
-
-        if member_type is dict:
-            if not isinstance(value, Mapping):
-                return value
-            expected_key_type, expected_value_type = _get_args(member_type)
-            return {
-                cast_values(item_key, expected_key_type, cast_map):
-                    cast_values(item_value, expected_value_type, cast_map)
-                for item_key, item_value in value.items()
-            }
-
-        if member_type is list:
-            if not isinstance(value, Sequence):
-                return value
-            expected_item_type, = _get_args(member_type)
-            return [
-                cast_values(item, expected_item_type, cast_map)
-                for item in value
-            ]
-
-        # 2.  Scalars — apply `cast_map`
-
-        for cast_type, cast_fn in cast_map.items():
-            if (
-                member_type is cast_type or
-                (isclass(member_type) and issubclass(member_type, cast_type))
-            ):
-                cast_value = cast_fn(value, member_type)
-                if test_type(cast_value, member_type):
-                    return cast_value
-
-        # 3.  Give up.
-
-        return value
+        yield t
 
 
 doctesting.testmod(__name__)

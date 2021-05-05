@@ -85,17 +85,3 @@ class OpenArgsBase(ArgsBase, collections.abc.Mapping):
     def to_dict(self) -> Dict[str, Any]:
         return {**super().to_dict(), **self.extras()}
 
-    # def prop_keys(self) -> Generator[str, None, None]:
-    #     return self.__class__.iter_prop_names()
-
-    # def prop_values(self) -> Generator[Any, None, None]:
-    #     for name in self.__class__.iter_prop_names():
-    #         yield getattr(self, name)
-
-    # def prop_items(self) -> Generator[Tuple[str, Any], None, None]:
-    #     for name in self.__class__.iter_prop_names():
-    #         yield (name, getattr(self, name))
-
-    # Fucking-A, this breaks Proper.props()
-    # def props(self) -> Dict[str, Any]:
-    #     return dict(self.prop_items())

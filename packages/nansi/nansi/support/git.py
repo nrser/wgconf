@@ -1,4 +1,4 @@
-from urllib.parse import urlparse, urljoin
+from urllib.parse import urlparse
 import re
 
 def repo_pathspace(origin_url: str) -> str:

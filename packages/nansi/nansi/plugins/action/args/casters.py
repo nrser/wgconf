@@ -3,7 +3,7 @@ from pathlib import Path
 from nansi.plugins.action.args.errors import CastTypeError
 
 from nansi.utils import doctesting
-from nansi.utils.typings import cast_values
+from nansi.utils.casting import CastError, deep_cast
 
 from .base import ArgsBase
 from .arg import Arg
@@ -18,7 +18,9 @@ def cast_path(args: ArgsBase, arg: Arg, value: Any) -> Path:
         return value
     if isinstance(value, Iterable):
         return Path(*value)
-    raise CastTypeError.create(arg, Path, value)
+    raise CastError(
+
+    )
 
 
 def autocast(args: ArgsBase, arg: Arg, value: Any):
@@ -42,10 +44,10 @@ def autocast(args: ArgsBase, arg: Arg, value: Any):
         PosixPath('/usr/local/bin')
 
     """
-    return cast_values(
-        value,
-        arg.type,
-        {
+    return deep_cast(
+        value=value,
+        expected_type=arg.type,
+        handlers={
             ArgsBase: lambda v, t: t(v, parent=args),
             Path: lambda v, t: cast_path(args, arg, v),
         }
