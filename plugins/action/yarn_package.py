@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import *
 
 from nansi.plugins.action.compose import ComposeAction
-from nansi.plugins.action.args import Arg, ArgsBase
+from nansi.plugins.action.args.all import Arg, ArgsBase
 from nansi.os_resolve import os_map_resolve
 
 class Args(ArgsBase):

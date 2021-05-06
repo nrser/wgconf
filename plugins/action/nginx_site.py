@@ -4,13 +4,16 @@ from collections import namedtuple
 from typing import *
 
 from nansi.plugins.action.compose import ComposeAction
-from nansi.plugins.action.args import Arg, ArgsBase
+from nansi.plugins.action.args.all import Arg, ArgsBase
 
 # pylint: disable=import-error,no-name-in-module,wrong-import-order
 from ansible_collections.nrser.nansi.plugins.action.nginx_config import (
     role_path,
     CommonArgs,
 )
+
+
+T = TypeVar("T")
 
 
 def cast_server_names(args: Args, _, value: T) -> Union[List[str], T]:

@@ -11,9 +11,12 @@ from typing import (
 
 from nansi.proper import Prop
 from nansi.utils import doctesting
+from nansi import logging
 
 from .base import ArgsBase
 
+
+LOG = logging.getLogger(__name__)
 
 TValue = TypeVar("TValue")
 TInput = TypeVar("TInput")
@@ -37,7 +40,7 @@ class Arg(Prop[TValue, TInput]):
         # pylint: disable=redefined-builtin
         if cast == 'autocast':
             # pylint: disable=import-outside-toplevel
-            from .casters import autocast
+            from .casts import autocast
             cast = autocast
         super().__init__(
             type,
@@ -66,9 +69,9 @@ class Arg(Prop[TValue, TInput]):
     ):
         if item_cast == 'autocast':
             # pylint: disable=import-outside-toplevel
-            from .casters import autocast
+            from .casts import autocast
             item_cast = autocast
-        def cast(args, arg, value):
+        def cast(value, expected_type, instance, prop):
             if value is None:
                 if allow_empty:
                     return []
@@ -77,7 +80,11 @@ class Arg(Prop[TValue, TInput]):
                 value = [value]
             if item_cast is None:
                 return value
-            return [item_cast(args, arg, item) for item in value]
+            return [
+                item_cast(item, item_type, instance=item, prop=prop)
+                for item
+                in value
+            ]
 
         return cls(List[item_type], default, cast=cast, alias=alias)
 

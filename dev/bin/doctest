@@ -12,7 +12,6 @@ from argparse import ArgumentParser
 from rich.console import Console
 from rich.panel import Panel
 from rich.padding import Padding
-from rich.markdown import Markdown
 from rich.table import Table
 
 
@@ -37,30 +36,26 @@ def rel(path):
 
 
 def ul(itr):
-    table = Table.grid(padding=(0,2))
+    table = Table.grid(padding=(0, 2))
     table.add_column()
     table.add_column()
 
     for entry in itr:
-        table.add_row(
-            f"-",
-            f"[underline blue]{entry}[/]"
-        )
+        table.add_row(f"-", f"[underline blue]{entry}[/]")
 
     return table
 
+
 def ol(itr):
-    table = Table.grid(padding=(0,2))
+    table = Table.grid(padding=(0, 2))
     table.add_column()
     table.add_column()
 
     for index, entry in enumerate(itr):
-        table.add_row(
-            f"{index + 1}.",
-            f"[underline blue]{entry}[/]"
-        )
+        table.add_row(f"{index + 1}.", f"[underline blue]{entry}[/]")
 
     return table
+
 
 @LOG.inject
 def is_doctest(path, *, log=LOG):
@@ -97,19 +92,33 @@ def plugins():
     ]
 
 
-def env():
-    return {**os.environ, "DOCTESTING": "yup"}
+@LOG.inject
+def env(*, debug: bool = False, log=LOG):
+    e = {**os.environ, "DOCTESTING": "yup"}
+    if debug:
+        log.debug("Setting DOCTESTING_DEBUG...")
+        e["DOCTESTING_DEBUG"] = "yup"
+    else:
+        log.debug("NOT debug!")
+    return e
 
 
 @LOG.inject
-def test(name, cmd, *, log=LOG):
+def test(name, cmd, *, log=LOG, debug: bool = False):
     log.debug("Running test command...", name=name, cmd=cmd)
-    r = run(cmd, capture_output=True, encoding="utf8", env=env(), check=False)
+    r = run(
+        cmd,
+        capture_output=True,
+        encoding="utf8",
+        env=env(debug=debug),
+        check=False,
+    )
     log.debug(
         "Test command completed",
         cmd=cmd,
         status=r.returncode,
-        len_stdout=len(r.stdout)
+        len_stdout=len(r.stdout),
+        len_stderr=len(r.stderr),
     )
     if r.returncode == 0 and not r.stderr:
         C.print(":white_check_mark:", name)
@@ -126,22 +135,22 @@ def test(name, cmd, *, log=LOG):
 
 
 @LOG.inject
-def test_module(module, *, verbose: bool=False, log=LOG):
-    log.debug("Testing MODULE...", module=module)
+def test_module(module, *, verbose: bool = False, debug: bool = False, log=LOG):
+    log.debug("Testing MODULE...", module=module, verbose=verbose)
     cmd = ["python", "-m", module]
     if verbose:
         cmd.append("-v")
-    return test(module, cmd)
+    return test(module, cmd, debug=debug)
 
 
 @LOG.inject
-def test_file(path, *, verbose: bool=False, log=LOG):
-    log.debug("Testing FILE (Ansible plugin)...", path=path)
+def test_file(path, *, verbose: bool = False, debug: bool = False, log=LOG):
+    log.debug("Testing FILE (Ansible plugin)...", path=path, verbose=verbose)
     cmd = ["python", "-m", "doctest"]
     if verbose:
         cmd.append("-v")
     cmd.append(path)
-    return test(rel(path), cmd)
+    return test(rel(path), cmd, debug=debug)
 
 
 def is_nansi_module(target):
@@ -164,24 +173,17 @@ def main(*, log=LOG):
     print(NANSI_ROOT)
     parser = ArgumentParser(description="Doctest driver script")
     parser.add_argument(
-        "-d", "--debug",
-        action="store_true",
-        help="Switch on debug log output"
+        "-d", "--debug", action="store_true", help="Switch on debug log output"
     )
     parser.add_argument(
-        "-f", "--fail-fast",
+        "-f",
+        "--fail-fast",
         action="store_true",
-        help="Quit after first failure"
+        help="Quit after first failure",
     )
+    parser.add_argument("-v", "--verbose", action="store_true", help="Speak up")
     parser.add_argument(
-        "-v", "--verbose",
-        action="store_true",
-        help="Speak up"
-    )
-    parser.add_argument(
-        "targets",
-        nargs="*",
-        help="Specific module names or file paths to run"
+        "targets", nargs="*", help="Specific module names or file paths to run"
     )
 
     args = parser.parse_args()
@@ -205,12 +207,12 @@ def main(*, log=LOG):
 
         for module, path in nansi_modules():
             rel_path = rel(path)
-            if not test_module(module, verbose=args.verbose):
+            if not test_module(module, verbose=args.verbose, debug=args.debug):
                 failed(rel_path)
             count += 1
         for path in plugins():
             rel_path = rel(path)
-            if not test_file(path, verbose=args.verbose):
+            if not test_file(path, verbose=args.verbose, debug=args.debug):
                 failed(path)
             count += 1
     else:
@@ -221,15 +223,23 @@ def main(*, log=LOG):
         for target in targets:
             if Path(target).exists():
                 if is_nansi_module(target):
-                    if not test_module(module_for(target), verbose=args.verbose):
+                    if not test_module(
+                        module_for(target),
+                        verbose=args.verbose,
+                        debug=args.debug,
+                    ):
                         failed(rel(target))
                     count += 1
                 else:
-                    if not test_file(target, verbose=args.verbose):
+                    if not test_file(
+                        target, verbose=args.verbose, debug=args.debug
+                    ):
                         failed(rel(target))
                     count += 1
             else:
-                if not test_module(target, verbose=args.verbose):
+                if not test_module(
+                    target, verbose=args.verbose, debug=args.debug
+                ):
                     path = NANSI_ROOT.joinpath(*target.split("."))
                     if path.is_dir():
                         path = path / "__init__.py"
@@ -242,7 +252,7 @@ def main(*, log=LOG):
     else:
         log.error(
             f"{len(failures)} file(s) failed (of {count} file(s) tested)",
-            failures=failures
+            failures=failures,
         )
         sys.exit(1)
 

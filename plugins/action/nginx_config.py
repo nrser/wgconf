@@ -6,7 +6,7 @@ import os.path
 import yaml
 
 from nansi.plugins.action.compose import ComposeAction
-from nansi.plugins.action.args import Arg, OpenArgsBase
+from nansi.plugins.action.args.all import Arg, OpenArgsBase
 
 
 def role_path(rel_path):

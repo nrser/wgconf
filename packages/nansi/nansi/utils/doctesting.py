@@ -6,6 +6,8 @@ from typing import Any, Callable, Mapping, Optional
 from ansible.template import Templar
 from ansible.parsing.dataloader import DataLoader
 
+from nansi import logging
+
 def template(
     expr: str,
     vars: Optional[Mapping[str, str]]=None,
@@ -70,6 +72,13 @@ def testmod(mod_name: str):
         # We got neither (1) or (2) so bounce the fuck out
         return
 
+    if "DOCTESTING_DEBUG" in os.environ:
+        level = logging.DEBUG
+    else:
+        level = logging.INFO
+
+    logging.setup(level=level)
+
     # We want the module ref itself so we can touch it inappropriately
     mod = sys.modules[mod_name]
 
@@ -88,4 +97,6 @@ def testmod(mod_name: str):
     if mod_name == '__main__':
         # pylint: disable=import-outside-toplevel
         import doctest
-        doctest.testmod(mod)
+        results = doctest.testmod(mod)
+        if results.failed > 0:
+            sys.exit(1)

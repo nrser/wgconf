@@ -4,7 +4,6 @@ from __future__ import annotations
 from typing import *
 from os.path import basename, isabs
 from urllib.parse import urlparse
-from operator import attrgetter
 import logging
 import shlex
 from collections import abc
@@ -12,7 +11,7 @@ from collections import abc
 from ansible.errors import AnsibleError
 
 from nansi.plugins.action.compose import ComposeAction
-from nansi.plugins.action.args import Arg, ArgsBase, os_fact_format
+from nansi.plugins.action.args.all import Arg, ArgsBase, os_fact_format
 from nansi.utils.strings import connect
 from nansi.support.systemd import file_content_for
 

@@ -7,7 +7,7 @@ import shlex
 from nansi import logging
 from nansi.plugins.action.args.arg import Arg
 from nansi.plugins.action.args.base import ArgsBase
-from nansi.plugins.action.args.casters import autocast
+from nansi.plugins.action.args.casts import autocast
 from nansi.plugins.action.args.jsos import JSOSType
 from nansi.plugins.action.compose import ComposeAction
 from nansi.constants import REPO_ROOT

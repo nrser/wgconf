@@ -1,3 +1,5 @@
+# pylint: disable=global-statement
+
 from __future__ import annotations
 import logging
 from typing import (
@@ -110,16 +112,7 @@ ROOT_LOGGER_NAMES = (
 )
 
 
-def _root_name(module_name: str) -> str:
-    return module_name.split(".")[0]
-
-
-def _announce_debug():
-    logger = get_logger(PKG_LOGGER_NAME)
-    logger.debug(
-        "[logging.level.debug]DEBUG[/logging.level.debug] logging "
-        f"[on]ENABLED[/on] for {logger.name}.*"
-    )
+_is_setup: bool = False
 
 
 def level_for(value: TLevelValue) -> TLevel:
@@ -194,20 +187,32 @@ def root_loggers() -> Tuple[LogGetter]:
 
 
 def set_level(level: Optional[TLevelValue] = None) -> None:
-    if level is not None:
-        level = level_for(level)
-        for logger in root_loggers():
+    if level is None:
+        return
+
+    level = level_for(level)
+
+    for logger in root_loggers():
+        if logger.level != level:
             logger.setLevel(level)
-    if level == DEBUG:
-        _announce_debug()
+            if level == DEBUG:
+                logger.debug(
+                    "[logging.level.debug]DEBUG[/logging.level.debug] logging "
+                    f"[on]ENABLED[/on] for {logger.name}.*"
+                )
 
 
 def setup(level: TLevelValue = DEFAULT_LEVEL) -> None:
-    logging.setLoggerClass(KwdsLogger)
+    global _is_setup
 
-    rich_handler = RichHandler.singleton()
-    for logger in root_loggers():
-        logger.addHandler(rich_handler)
+    if _is_setup is False:
+        logging.setLoggerClass(KwdsLogger)
+
+        rich_handler = RichHandler.singleton()
+        for logger in root_loggers():
+            logger.addHandler(rich_handler)
+
+        _is_setup = True
 
     set_level(level)
 

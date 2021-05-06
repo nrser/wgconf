@@ -3,7 +3,7 @@ from collections import abc
 from typing import *
 
 from nansi.plugins.action.compose import ComposeAction
-from nansi.plugins.action.args import Arg, OpenArgsBase, os_fact_format
+from nansi.plugins.action.args.all import Arg, OpenArgsBase, os_fact_format
 
 # pylint: disable=no-name-in-module,import-error,wrong-import-order
 from ansible_collections.nrser.nansi.plugins.action.apt_version import (

@@ -3,7 +3,7 @@ from typing import *
 from os import path
 
 from nansi.plugins.action.compose import ComposeAction
-from nansi.plugins.action.args import Arg, ArgsBase, attr_formatter
+from nansi.plugins.action.args.all import Arg, ArgsBase, attr_formatter
 from nansi.os_resolve import os_map_resolve
 
 from ansible_collections.nrser.nansi.plugins.action import release # pylint: disable=import-error,no-name-in-module,wrong-import-order

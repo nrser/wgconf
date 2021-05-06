@@ -10,7 +10,7 @@ import shlex
 from ansible.parsing.yaml.dumper import AnsibleDumper
 
 from nansi.plugins.action.compose import ComposeAction
-from nansi.plugins.action.args import Arg, OpenArgsBase
+from nansi.plugins.action.args.all import Arg, OpenArgsBase
 from nansi.utils.functions import get_fn
 
 LOG = logging.getLogger(__name__)
@@ -47,6 +47,7 @@ class Args(OpenArgsBase):
 
 class ActionModule(ComposeAction):
     def encode_bytes(self, args, bytes) -> str:
+        # pylint: disable=redefined-builtin
         fn_name = f"b{args.bytes_base}encode"
         fn = getattr(base64, fn_name)
         return fn(bytes)

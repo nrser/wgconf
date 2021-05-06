@@ -3,7 +3,7 @@ from typing import Literal, Optional
 import logging
 
 from nansi.plugins.action.os_resolve import OSResolveAction
-from nansi.plugins.action.args import Arg, ArgsBase
+from nansi.plugins.action.args.all import Arg, ArgsBase
 
 LOG = logging.getLogger(__name__)
 

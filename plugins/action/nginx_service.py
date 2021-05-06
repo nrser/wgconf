@@ -5,7 +5,7 @@ from nansi.plugins.action.compose import (
     ComposeAction,
     ComposedActionFailedError,
 )
-from nansi.plugins.action.args import Arg, OpenArgsBase
+from nansi.plugins.action.args.all import Arg, OpenArgsBase
 
 # pylint: disable=import-error,no-name-in-module,wrong-import-order
 from ansible_collections.nrser.nansi.plugins.action.nginx_config import (

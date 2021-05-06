@@ -74,7 +74,12 @@ def _cast_list(
     return [map_cast(item, expected_item_type, handlers) for item in value]
 
 
-def map_cast(value: Any, expected_type: Type, handlers: THandlers) -> Any:
+def map_cast(
+    value: Any,
+    expected_type: Type,
+    handlers: THandlers,
+    **context
+) -> Any:
     """
     Cast values using a mapping of type → cast function.
 
@@ -187,13 +192,23 @@ def map_cast(value: Any, expected_type: Type, handlers: THandlers) -> Any:
 
         if root_type is dict:
             try:
-                return _cast_dict(value, get_args(member_type), handlers)
+                return _cast_dict(
+                    value,
+                    get_args(member_type),
+                    handlers,
+                    **context
+                )
             except CastError:
                 continue
 
         if root_type is list:
             try:
-                return _cast_list(value, get_args(member_type)[0], handlers)
+                return _cast_list(
+                    value,
+                    get_args(member_type)[0],
+                    handlers,
+                    **context
+                )
             except CastError:
                 continue
 
@@ -202,7 +217,7 @@ def map_cast(value: Any, expected_type: Type, handlers: THandlers) -> Any:
         for cast_type, cast_fn in handlers.items():
             if issubclass(root_type, cast_type):
                 try:
-                    cast_value = cast_fn(value, member_type)
+                    cast_value = cast_fn(value, member_type, **context)
                 except CastError:
                     continue
 
@@ -217,6 +232,7 @@ def map_cast(value: Any, expected_type: Type, handlers: THandlers) -> Any:
                         expected_type=member_type,
                         cast_function=cast_fn,
                         cast_function_key=cast_type,
+                        context=context,
                     )
 
     # END for member_type in ...

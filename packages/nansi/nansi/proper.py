@@ -180,7 +180,12 @@ class Prop(Generic[TValue, TInput]):
 
     def cast(self, instance, value):
         if self._cast is not None:
-            return self._cast(instance, self, value)
+            return self._cast(
+                value,
+                self.type,
+                instance=instance,
+                prop=self,
+            )
         return value
 
     def __str__(self, instance=None) -> str:

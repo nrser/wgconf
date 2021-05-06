@@ -8,7 +8,7 @@ from os.path import basename, isabs, join
 from collections import abc
 
 from nansi.plugins.action.compose import ComposeAction
-from nansi.plugins.action.args import (
+from nansi.plugins.action.args.all import (
     Arg,
     ArgsBase,
     OpenArgsBase,
@@ -74,6 +74,7 @@ class Config(OpenArgsBase):
     def task_args(self, config_dir: str) -> Dict[str, Any]:
         dest = self.dest
         if dest is None:
+            # pylint: disable=no-member
             dest = basename(self.src)
         else:
             dest = dest.format(config=config_dir)

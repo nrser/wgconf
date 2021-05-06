@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from nansi.plugins.action.compose import ComposeAction
-from nansi.plugins.action.args import Arg, OpenArgsBase
+from nansi.plugins.action.args.all import Arg, OpenArgsBase
 
 class Args(OpenArgsBase):
     path = Arg(str, "/etc/ssl/certs/dhparam.pem")
