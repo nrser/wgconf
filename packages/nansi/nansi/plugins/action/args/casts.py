@@ -1,4 +1,4 @@
-from typing import Any, Iterable, Optional, Type, Union
+from typing import Any, Iterable, Optional, Type
 from pathlib import Path
 
 from nansi.utils import doctesting
