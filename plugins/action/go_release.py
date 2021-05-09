@@ -1,12 +1,13 @@
 from __future__ import annotations
-from typing import *
 from os import path
+from typing import Literal, Optional
 
 from nansi.plugins.action.compose import ComposeAction
 from nansi.plugins.action.args.all import Arg, ArgsBase, attr_formatter
 from nansi.os_resolve import os_map_resolve
 
-from ansible_collections.nrser.nansi.plugins.action import release # pylint: disable=import-error,no-name-in-module,wrong-import-order
+# pylint: disable=relative-beyond-top-level
+from . import release
 
 class Args(ArgsBase):
     version     = Arg( str )
@@ -34,7 +35,7 @@ class Args(ArgsBase):
     def version_dest(self) -> str:
         return release.Args(
             dict(name=self.name, version=self.version, url=self.url),
-            self.task_vars,
+            parent=self,
         ).version_dest
 
     @property

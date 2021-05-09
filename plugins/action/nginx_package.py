@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import *
+from typing import Dict, Literal, Optional
 
 from nansi.plugins.action.compose import ComposeAction
 from nansi.os_resolve import os_map_resolve

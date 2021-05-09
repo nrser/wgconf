@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import *
+from typing import Literal
 
 from nansi.plugins.action.compose import (
     ComposeAction,
@@ -7,10 +7,8 @@ from nansi.plugins.action.compose import (
 )
 from nansi.plugins.action.args.all import Arg, OpenArgsBase
 
-# pylint: disable=import-error,no-name-in-module,wrong-import-order
-from ansible_collections.nrser.nansi.plugins.action.nginx_config import (
-    CommonArgs,
-)
+# pylint: disable=relative-beyond-top-level
+from .nginx_config import CommonArgs
 
 
 class Args(OpenArgsBase, CommonArgs):

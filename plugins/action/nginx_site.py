@@ -1,22 +1,21 @@
 from __future__ import annotations
 from os.path import join
 from collections import namedtuple
-from typing import *
+from typing import List, Literal, Optional, Type, TypeVar, Union
 
 from nansi.plugins.action.compose import ComposeAction
 from nansi.plugins.action.args.all import Arg, ArgsBase
 
-# pylint: disable=import-error,no-name-in-module,wrong-import-order
-from ansible_collections.nrser.nansi.plugins.action.nginx_config import (
-    role_path,
-    CommonArgs,
-)
+# pylint: disable=relative-beyond-top-level
+from .nginx_config import role_path, CommonArgs
 
 
 T = TypeVar("T")
 
 
-def cast_server_names(args: Args, _, value: T) -> Union[List[str], T]:
+def cast_server_names(
+    value: T, expected_type: Type, **context
+) -> Union[List[str], T]:
     """
     If `value` is a `str`, splits it into a list of `str`. All other `value`
     are returned as-is.

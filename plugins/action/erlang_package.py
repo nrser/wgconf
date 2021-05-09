@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import *
+from typing import Literal
 
 from nansi.plugins.action.compose import ComposeAction
 from nansi.plugins.action.args.all import Arg, ArgsBase, os_fact_formatter

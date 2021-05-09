@@ -1,5 +1,4 @@
 from __future__ import annotations
-from typing import *
 from collections import abc
 
 from nansi.plugins.action.compose import ComposeAction

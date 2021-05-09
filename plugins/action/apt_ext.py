@@ -5,30 +5,28 @@ from typing import *
 from nansi.plugins.action.compose import ComposeAction
 from nansi.plugins.action.args.all import Arg, OpenArgsBase, os_fact_format
 
-# pylint: disable=no-name-in-module,import-error,wrong-import-order
-from ansible_collections.nrser.nansi.plugins.action.apt_version import (
-    PackageArgs,
-)
+# pylint: disable=relative-beyond-top-level
+from .apt_version import PackageArgs
 
 
-def cast_name(args, _, value):
+def cast_name(value, expected_type, instance, **context):
     if isinstance(value, str):
         return value
     if isinstance(value, abc.Mapping):
-        return PackageArgs(value, args)
+        return PackageArgs(value, instance)
     return value
 
 
-def cast_key_id(args, _, value):
+def cast_key_id(value, expected_type, **context):
     if value is None:
         return None
     return value.replace(" ", "")
 
 
-def cast_respoitory_repo(args, _, value):
+def cast_respoitory_repo(value, expected_type, instance, **context):
     if value is None:
         return None
-    return os_fact_format(value, args.vars.raw["ansible_facts"])
+    return os_fact_format(value, instance.vars.raw["ansible_facts"])
 
 
 class Args(OpenArgsBase):

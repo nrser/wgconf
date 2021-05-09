@@ -25,26 +25,14 @@ def from_var(name):
     return lambda args, _arg: args.vars[name]
 
 
-def cast_path(args, arg, value):
-    if value is None:
-        return None
-    if isinstance(value, str):
-        return Path(value)
-    if isinstance(value, Path):
-        return value
-    if isinstance(value, Iterable):
-        return Path(*value)
-    return value
-
-
 def default_property(args, arg):
     return getattr(args, f"default_{arg.name}")
 
 
 class HookScript(ArgsBase):
     hooks_dir = Arg(Path)
-    src = Arg(Path, cast=cast_path)
-    dest = Arg(Optional[Path], cast=cast_path)
+    src = Arg(Path)
+    dest = Arg(Optional[Path])
 
     @property
     def is_template(self) -> bool:
@@ -191,9 +179,9 @@ class Args(ArgsBase):
 
     name = Arg(str, "wg0")
     hostname = Arg(str, from_var("inventory_hostname"))
-    dir = Arg(Path, "/etc/wireguard", cast=cast_path)
+    dir = Arg(Path, "/etc/wireguard")
     public_address = Arg(Optional[str])
-    wg_bin_path = Arg(Optional[Path], cast=cast_path)
+    wg_bin_path = Arg(Optional[Path])
     network_interface = Arg(str, "eth0")
 
     interface = Arg(InterfaceUpdate)
@@ -204,17 +192,17 @@ class Args(ArgsBase):
     clients = Arg(Dict[str, ClientUpdate], {}, cast=autocast)
     client_defaults = Arg(ClientDefaults, {}, cast=autocast)
 
-    fetch_clients_to = Arg(Optional[Path], cast=cast_path)
-    copy_build_to = Arg(Path, "/tmp", cast=cast_path)
+    fetch_clients_to = Arg(Optional[Path])
+    copy_build_to = Arg(Path, "/tmp")
     force_build = Arg(bool, False)
 
     python_version = Arg(str, "3.8.5")
-    python_bin_dir = Arg(Path, default_property, cast=cast_path)
-    python_executable = Arg(Path, default_property, cast=cast_path)
-    pip_executable = Arg(Path, default_property, cast=cast_path)
+    python_bin_dir = Arg(Path, default_property)
+    python_executable = Arg(Path, default_property)
+    pip_executable = Arg(Path, default_property)
 
-    hooks_dir = Arg(Path, default_property, cast=cast_path)
-    clients_dir = Arg(Optional[Path], cast=cast_path)
+    hooks_dir = Arg(Path, default_property)
+    clients_dir = Arg(Optional[Path])
 
     @property
     def pyenv_root(self) -> Path:

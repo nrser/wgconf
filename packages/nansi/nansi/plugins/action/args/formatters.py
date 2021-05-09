@@ -1,4 +1,7 @@
+from typing import Any, Type
+from nansi.plugins.action.args.base import ArgsBase
 from nansi.support.go import GO_ARCH_MAP
+
 
 def os_fact_format(string: str, ansible_facts, **extras) -> str:
     os_facts = {
@@ -13,16 +16,19 @@ def os_fact_format(string: str, ansible_facts, **extras) -> str:
 
 
 def os_fact_formatter(*extra_attrs):
-    def cast(args, arg, string: str) -> str:
+    def cast(
+        value: Any, expected_type: Type, instance: ArgsBase, **context
+    ) -> str:
         return os_fact_format(
-            string,
+            value,
             # Ansible facts shouldn't be templates that need rendering from my
             # understanding, so we can use the raw values
-            args.vars.raw["ansible_facts"],
-            **{name: getattr(args, name) for name in extra_attrs},
+            instance.vars.raw["ansible_facts"],
+            **{name: getattr(instance, name) for name in extra_attrs},
         )
 
     return cast
+
 
 def attr_formatter(*names):
     """
@@ -33,6 +39,8 @@ def attr_formatter(*names):
     >>> Args({"name": "blah"}).path
     'blah.txt'
     """
-    return lambda args, _, string: string.format(
-        **{name: getattr(args, name) for name in names}
-    )
+    def cast(
+        value: str, expected_type: Type, instance: ArgsBase, **context
+    ) -> str:
+        return value.format(**{name: getattr(instance, name) for name in names})
+    return cast

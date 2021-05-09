@@ -1,5 +1,4 @@
 from __future__ import annotations
-from typing import *
 from os import path
 from collections import abc
 

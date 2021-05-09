@@ -15,4 +15,5 @@ disable=unused-argument,
         trailing-whitespace,
         missing-module-docstring,
         invalid-name,
-        redefined-outer-name
+        redefined-outer-name,
+        wrong-import-order

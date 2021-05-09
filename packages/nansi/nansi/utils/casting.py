@@ -25,6 +25,7 @@ LOG = logging.getLogger(__name__)
 
 THandlers = Mapping[Type, Callable[[Any, Type], Any]]
 
+
 class CastError(TypeError):
     def __init__(self, message, value, expected_type):
         super().__init__(message)
@@ -36,6 +37,7 @@ def _cast_dict(
     value: Any,
     expected_types: Tuple[Type, Type],
     handlers: THandlers,
+    **context,
 ) -> Dict:
     if not isinstance(value, Mapping):
         raise CastError(
@@ -49,17 +51,15 @@ def _cast_dict(
 
     expected_key_type, expected_value_type = expected_types
     return {
-        map_cast(item_key, expected_key_type, handlers): map_cast(
-            item_value, expected_value_type, handlers
+        map_cast(item_key, expected_key_type, handlers, **context): map_cast(
+            item_value, expected_value_type, handlers, **context
         )
         for item_key, item_value in value.items()
     }
 
 
 def _cast_list(
-    value: Any,
-    expected_item_type: Type,
-    handlers: THandlers
+    value: Any, expected_item_type: Type, handlers: THandlers, **context
 ) -> List:
     if not isinstance(value, Sequence):
         raise CastError(
@@ -71,14 +71,14 @@ def _cast_list(
             Sequence,
         )
 
-    return [map_cast(item, expected_item_type, handlers) for item in value]
+    return [
+        map_cast(item, expected_item_type, handlers, **context)
+        for item in value
+    ]
 
 
 def map_cast(
-    value: Any,
-    expected_type: Type,
-    handlers: THandlers,
-    **context
+    value: Any, expected_type: Type, handlers: THandlers, **context
 ) -> Any:
     """
     Cast values using a mapping of type → cast function.
@@ -193,10 +193,7 @@ def map_cast(
         if root_type is dict:
             try:
                 return _cast_dict(
-                    value,
-                    get_args(member_type),
-                    handlers,
-                    **context
+                    value, get_args(member_type), handlers, **context
                 )
             except CastError:
                 continue
@@ -204,10 +201,7 @@ def map_cast(
         if root_type is list:
             try:
                 return _cast_list(
-                    value,
-                    get_args(member_type)[0],
-                    handlers,
-                    **context
+                    value, get_args(member_type)[0], handlers, **context
                 )
             except CastError:
                 continue
@@ -247,5 +241,6 @@ def map_cast(
         value,
         member_types,
     )
+
 
 doctesting.testmod(__name__)

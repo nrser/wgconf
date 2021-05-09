@@ -1,8 +1,8 @@
 # pylint: disable=logging-too-many-args
 
 from __future__ import annotations
-from typing import *
 from os.path import basename, isabs
+from typing import Any, Dict, List, Literal, Optional, Type
 from urllib.parse import urlparse
 import logging
 import shlex
@@ -19,13 +19,13 @@ from nansi.support.systemd import file_content_for
 LOG = logging.getLogger(__name__)
 
 
-def cast_url(args, _, value):
+def cast_url(value: Any, expected_type: Type, instance: ArgsBase, **context):
     if isinstance(value, list):
         value = connect(*value)
     return os_fact_format(
         value,
-        args.task_vars["ansible_facts"],
-        version=args.version,
+        instance.vars.raw["ansible_facts"],
+        version=instance.version,
     )
 
 class Exe(ArgsBase):

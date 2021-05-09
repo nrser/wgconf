@@ -1,20 +1,15 @@
 # pylint: disable=logging-too-many-args
 
 from __future__ import annotations
-from typing import *
 import logging
 import shlex
 from os.path import basename, isabs, join
 from collections import abc
+from typing import Any, Dict, Literal, Optional, Type, Union
 
 from nansi.plugins.action.compose import ComposeAction
-from nansi.plugins.action.args.all import (
-    Arg,
-    ArgsBase,
-    OpenArgsBase,
-    CastTypeError,
-    CastValueError,
-)
+from nansi.plugins.action.args.all import Arg, ArgsBase, OpenArgsBase
+from nansi.utils.casting import CastError
 from nansi.utils.strings import connect
 from nansi.utils.cmds import iter_opts, TOpts
 from nansi.support.systemd import file_content_for
@@ -26,7 +21,14 @@ class Config(OpenArgsBase):
     CAST_VALUE_TYPE = Union[Dict[str, str], Dict[str, Dict]]
 
     @classmethod
-    def cast(cls, args, arg, value: CAST_VALUE_TYPE):
+    def cast(
+        cls,
+        value: Any,
+        expected_type: Type,
+        instance: ArgsBase,
+        prop: Arg,
+        **context,
+    ):
         # if "copy" in value:
         #     return CopyConfig.cast(args, arg, value["copy"])
         # elif "template" in value:
@@ -34,38 +36,42 @@ class Config(OpenArgsBase):
         # return value
 
         if not isinstance(value, abc.Mapping):
-            raise CastTypeError(
+            raise CastError(
                 f"Expected `value` to be {abc.Mapping}, "
                 f"given {type(value)}: {repr(value)}",
-                arg=arg, value=value
+                value=value,
+                expected_type=expected_type,
             )
 
         items = list(value.items())
 
         if len(items) != 1:
-            raise CastValueError(
+            raise CastError(
                 "There should be only one key/value pair in the mapping "
                 f"(like an Ansible task def), found {len(items)}",
-                arg=arg, value=value
+                value=value,
+                expected_type=expected_type,
             )
 
         action, task_args = items[0]
 
         if not isinstance(action, str):
-            raise CastTypeError(
+            raise CastError(
                 f"Expected Dict[str, _], given Dict[{type(action)}, _]: "
                 f"{action}",
-                arg=arg, value=value
+                value=value,
+                expected_type=expected_type,
             )
 
         if isinstance(task_args, str):
-            return cls(dict(action=action, src=task_args), args.task_vars)
+            return cls(dict(action=action, src=task_args), parent=instance)
         if isinstance(task_args, abc.Mapping):
-            return cls(dict(action=action, **task_args), args.task_vars)
-        raise CastTypeError(
+            return cls(dict(action=action, **task_args), parent=instance)
+        raise CastError(
             "Expected `value` to be `Dict[str, str]` or `Dict[str, Dict]`, "
             f"given `Dict[str, {type(task_args)}]`",
-            arg=arg, value=value
+            value=value,
+            expected_type=expected_type,
         )
 
     action = Arg(str)
@@ -88,6 +94,7 @@ class Config(OpenArgsBase):
             ).items()
             if v is not None
         }
+
 
 class SystemdDockerService(ArgsBase):
 
@@ -170,7 +177,6 @@ class SystemdDockerService(ArgsBase):
 
 
 class ActionModule(ComposeAction):
-
     def state_present(self, service: SystemdDockerService):
         if len(service.config) > 0:
             self.tasks.file(
