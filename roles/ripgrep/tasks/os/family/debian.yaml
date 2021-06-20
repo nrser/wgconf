@@ -1,7 +1,0 @@
-- name: Manage RipGrep package on Debian systems
-  become: true
-  become_user: root
-  apt:
-    deb: "{{ rg_deb_url }}"
-    state: "{{ rg_state }}"
-  

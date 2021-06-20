@@ -1,3 +1,0 @@
-- name: gitlab_reconfigure_restart
-  include_tasks: "{{ role_path }}/handlers/gitlab_reconfigure_restart.yaml"
-  

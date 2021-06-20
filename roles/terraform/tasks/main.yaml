@@ -1,2 +1,0 @@
-- include_tasks: >-
-    {{ lookup('nrser.nansi.os_tasks', role_path + '/tasks/os' ) }}

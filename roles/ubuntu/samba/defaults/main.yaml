@@ -1,6 +1,0 @@
-samba_allow_from_ips:
-  - any
-
-samba_users: []
-
-samba_shares: {}

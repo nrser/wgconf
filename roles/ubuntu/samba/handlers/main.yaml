@@ -1,3 +1,0 @@
-- name: samba_restart
-  include_tasks: "{{ role_path }}/handlers/samba_restart.yaml"
-  

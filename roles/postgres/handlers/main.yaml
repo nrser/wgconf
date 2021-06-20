@@ -1,5 +1,0 @@
-- name: pg_restart
-  service:
-    name: "{{ pg_service_name }}"
-    state: restarted
-    

@@ -1,5 +1,0 @@
-- name: restart icecast2
-  service:
-    name: icecast2
-    enabled: true
-    state: restarted

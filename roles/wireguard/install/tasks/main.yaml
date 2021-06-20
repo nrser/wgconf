@@ -1,5 +1,0 @@
-- name: Install wireguard
-  apt:
-    name: wireguard
-    update_cache: true
-    cache_valid_time: "{{ apt_cache_valid_time }}"

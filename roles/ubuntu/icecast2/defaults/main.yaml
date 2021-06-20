@@ -1,7 +1,0 @@
-# Global Defaults
-# ============================================================================
-
-# Make sure we have a value for how often we update the apt cache, used when
-# installing packages.
-apt_cache_valid_time: 86400 # in seconds -> 1 day
-

@@ -1,8 +1,0 @@
-allow_duplicates: false
-
-dependencies:
-  - role: nrser.nansi.pyenv
-    vars:
-      pyenv_versions:
-        - version: 3.8.5
-          state: present

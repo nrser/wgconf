@@ -1,8 +1,0 @@
-- name: "Restart smbd and smbd"
-  loop:
-    - smbd
-    - nmbd
-  service:
-    name: "{{ item }}"
-    state: restarted
-  

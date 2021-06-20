@@ -1,8 +1,0 @@
-# https://askubuntu.com/questions/878431/can-a-vanilla-ubuntu-16-04-lts-server-run-without-snapd
-- name: Purge snapd
-  apt:
-    name: snapd
-    state: absent
-    purge: true
-    autoremove: true
-  notify: reboot

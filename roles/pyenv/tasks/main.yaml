@@ -1,7 +1,0 @@
-- include_tasks: >-
-    {{ lookup('nrser.nansi.os_tasks', role_path + '/tasks/os' ) }}
-
-- when: pyenv_versions is not none
-  name: Manage installed versions
-  nrser.nansi.pyenv_manage_versions:
-    versions: "{{ pyenv_versions }}"

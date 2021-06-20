@@ -1,8 +1,0 @@
-- include_tasks: >-
-    {{  lookup(
-          'nrser.nansi.os_tasks',
-          (role_path, 'tasks/os') | nrser.nansi.to_path ) }}
-
-- when: pg_local_admin_users is not none and pg_local_admin_users != ""
-  include_tasks: >-
-    {{ (role_path, 'tasks/admin_users.yaml') | nrser.nansi.to_path }}
